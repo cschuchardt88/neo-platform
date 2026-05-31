@@ -20,23 +20,101 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using System.Numerics;
+
 namespace Neo.VM.Types
 {
-    public class VMByteArray(ReadOnlyMemory<byte> value) : VMObject(value)
+    public class VMByteArray : VMObject
     {
-        public new VMObjectType Type => VMObjectType.ByteString;
+        public override VMObjectType Type => VMObjectType.ByteString;
 
-        public VMByteArray(ReadOnlySpan<byte> value) : this(new ReadOnlyMemory<byte>(value.ToArray())) { }
+        public int Length => _memory.Length;
+
+        public VMByteArray(byte[] data)
+        {
+            _memory = data?.Clone() as byte[] ?? [];
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(obj, this)) return true;
+            return Equals(obj as VMByteArray);
+        }
+
+        public override int GetHashCode()
+        {
+            return _memory.ToArray()
+                .Aggregate(0, (hash, b) => (hash * 31) ^ b);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            _memory = null;
+            base.Dispose(disposing);
+        }
 
         public override string ToString()
         {
-            foreach (var v in ValueMemory.Span)
+            foreach (var v in _memory.Span)
             {
                 if (char.IsAsciiLetterOrDigit((char)v)) continue;
-                return Convert.ToBase64String(ValueMemory.Span);
+                return Convert.ToBase64String(_memory.Span);
             }
 
-            return VMUility.StrictUtf8Encoding.GetString(ValueMemory.Span);
+            return VMUility.StrictUtf8Encoding.GetString(_memory.Span);
         }
+
+        public override VMObject Clone()
+        {
+            var clone = new VMByteArray(_memory.ToArray());
+
+            clone.AddReference();
+
+            return clone;
+        }
+
+        public override bool GetBoolean()
+        {
+            return !_memory.IsEmpty;
+        }
+
+        public override BigInteger GetInteger()
+        {
+            return new(_memory.Span[..VMInteger.MaxSize]);
+        }
+
+        /// <summary>
+        /// Get byte at index
+        /// </summary>
+        public byte this[int index]
+        {
+            get => _memory.Span[index];
+        }
+
+        public string ToHexString()
+        {
+            return Convert.ToHexStringLower(_memory.Span);
+        }
+
+        /// <summary>
+        /// Concatenation: VMByteArray + VMByteArray
+        /// </summary>
+        public static VMByteArray operator +(VMByteArray a, VMByteArray b)
+        {
+            return new VMByteArray([.. a._memory.Span, .. b._memory.Span]);
+        }
+
+        /// <summary>
+        /// Equality comparison
+        /// </summary>
+        public static bool operator ==(VMByteArray a, VMByteArray b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null) return false;
+            return a._memory.Span.SequenceEqual(b._memory.Span);
+        }
+
+        public static bool operator !=(VMByteArray a, VMByteArray b) =>
+            !(a == b);
     }
 }

@@ -8,6 +8,13 @@
 
   <ItemGroup>
     <Folder Include="HardForks\" />
+    <Folder Include="Core\" />
+    <Folder Include="Interop\" />
+    <Folder Include="Instructions\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

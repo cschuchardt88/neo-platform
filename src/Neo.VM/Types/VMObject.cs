@@ -21,18 +21,21 @@
 // SERVICES
 
 using Neo.VM.Interfaces;
+using System.IO.Hashing;
+using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMObject(ReadOnlyMemory<byte> value) : IVMComponent, IEquatable<VMObject>
+    public abstract class VMObject : IVMComponent, IEquatable<VMObject>
     {
-        public ReadOnlyMemory<byte> ValueMemory { get; } = value;
+        public abstract VMObjectType Type { get; }
 
-        public VMObjectType Type { get; }
+        public int RefCount => _refCount;
 
-        public int Size => ValueMemory.Length;
+        private bool _disposed = false;
+        private int _refCount = 1;
 
-        public int RefCount { get; private set; } = 1;
+        protected ReadOnlyMemory<byte> _memory;
 
         #region IEquatable
 
@@ -46,26 +49,92 @@ namespace Neo.VM.Types
         {
             if (other is null) return false;
             if (Type != other.Type) return false;
-            if (Size != other.Size) return false;
-            return ValueMemory.Span.SequenceEqual(other.ValueMemory.Span);
+            return _memory.Span.SequenceEqual(other._memory.Span);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Type, Size, ValueMemory, RefCount);
+            return HashCode.Combine(Type, Crc32.HashToUInt32(_memory.Span), RefCount);
+        }
+
+        #endregion
+
+        #region IDisposable
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Cleanup managed resources
+                }
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~VMObject()
+        {
+            Dispose(false);
         }
 
         #endregion
 
         #region References
 
-        public void AddRef() =>
-            RefCount++;
+        public void AddReference()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            Interlocked.Increment(ref _refCount);
+        }
 
-        public void Release() =>
-            RefCount--;
+        public void Release()
+        {
+            if (_disposed) return;
+
+            var newCount = Interlocked.Decrement(ref _refCount);
+            if (newCount <= 0)
+            {
+                Dispose(true);
+            }
+        }
 
         #endregion
+
+        /// <summary>
+        /// Returns a deep clone of this object
+        /// </summary>
+        public abstract VMObject Clone();
+
+        /// <summary>
+        /// Converts this object to a <see cref="ReadOnlySpan{T}"/> (for serialization/storage)
+        /// </summary>
+        public virtual ReadOnlySpan<byte> GetReadOnlySpan()
+        {
+            return _memory.ToArray();
+        }
+
+        /// <summary>
+        /// Converts this object to a signed integer (if possible)
+        /// </summary>
+        public virtual BigInteger GetInteger()
+        {
+            throw new InvalidOperationException($"Cannot convert {Type} to integer");
+        }
+
+        /// <summary>
+        /// Converts this object to a boolean
+        /// </summary>
+        public virtual bool GetBoolean()
+        {
+            return true; // NeoVM treats most non-null objects as true
+        }
 
     }
 }

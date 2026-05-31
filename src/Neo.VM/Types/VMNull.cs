@@ -24,22 +24,48 @@ using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMBigInteger(ReadOnlyMemory<byte> value) : VMObject(value)
+    public class VMNull : VMObject
     {
-        public const int MaxSize = 32;
+        public override VMObjectType Type => VMObjectType.Any;
 
-        public new VMObjectType Type => VMObjectType.Integer;
-
-        public VMBigInteger(BigInteger value) : this(value.ToByteArray())
+        public override bool Equals(object? obj)
         {
-            if (value.GetByteCount() > MaxSize)
-                throw new ArgumentException($"Integer size {Size} bytes exceeds maximum allowed size of {MaxSize} bytes.", nameof(value));
+            if (ReferenceEquals(this, obj)) return true;
+            return obj is VMNull;
         }
 
-
-        public static implicit operator BigInteger(VMBigInteger value)
+        public override int GetHashCode()
         {
-            return new(value.ValueMemory.Span);
+            return 0;
+        }
+
+        public override VMObject Clone()
+        {
+            var clone = new VMNull();
+
+            clone.AddReference();
+
+            return clone;
+        }
+
+        public override bool GetBoolean()
+        {
+            return false;
+        }
+
+        public override BigInteger GetInteger()
+        {
+            return BigInteger.Zero;
+        }
+
+        public override ReadOnlySpan<byte> GetReadOnlySpan()
+        {
+            return [];
+        }
+
+        public override string ToString()
+        {
+            return "\0";
         }
     }
 }

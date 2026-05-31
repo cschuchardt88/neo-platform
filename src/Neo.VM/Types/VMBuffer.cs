@@ -24,36 +24,70 @@ using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMBuffer(ReadOnlySpan<byte> value) : VMObject(new(value.ToArray()))
+    public class VMBuffer : VMObject
     {
-        public new VMObjectType Type => VMObjectType.Buffer;
+        public override VMObjectType Type => VMObjectType.Buffer;
 
-        public VMBuffer(ReadOnlyMemory<byte> value) : this(value.Span) { }
+        public VMBuffer(int size)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            _memory = GC.AllocateUninitializedArray<byte>(size, false);
+        }
+
+        public VMBuffer(byte[] data)
+        {
+            _memory = data.Clone() as byte[] ?? [];
+        }
+
+        public VMBuffer(VMByteArray source)
+        {
+            _memory = source?.GetReadOnlySpan().ToArray() ?? [];
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            _memory = null; // Help GC
+            base.Dispose(disposing);
+        }
 
         public override string ToString()
         {
-            foreach (var v in ValueMemory.Span)
+            foreach (var v in _memory.Span)
             {
                 if (char.IsAsciiLetterOrDigit((char)v)) continue;
-                return Convert.ToBase64String(ValueMemory.Span);
+                return Convert.ToBase64String(_memory.Span);
             }
 
-            return VMUility.StrictUtf8Encoding.GetString(ValueMemory.Span);
+            return VMUility.StrictUtf8Encoding.GetString(_memory.Span);
+        }
+
+        public override VMObject Clone()
+        {
+            var clone = new VMBuffer(_memory.ToArray());
+
+            clone.AddReference();
+
+            return clone;
+        }
+
+        public override bool GetBoolean()
+        {
+            return !_memory.IsEmpty;
+        }
+
+        public override BigInteger GetInteger()
+        {
+            return new(_memory.Span[..VMInteger.MaxSize]);
+        }
+
+        public byte this[int index]
+        {
+            get => _memory.Span[index];
         }
 
         public static implicit operator BigInteger(VMBuffer value)
         {
-            return new BigInteger(value.ValueMemory.Span);
-        }
-
-        public static implicit operator bool(VMBuffer value)
-        {
-            return true;
-        }
-
-        public static implicit operator ReadOnlySpan<byte>(VMBuffer value)
-        {
-            return value.ValueMemory.Span;
+            return new BigInteger(value._memory.Span[..VMInteger.MaxSize]);
         }
     }
 }
