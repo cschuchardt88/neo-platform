@@ -20,15 +20,15 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.VM.Interfaces
+namespace Neo.VM.Tests.Types
 {
-    public interface IVMComponent : IDisposable
+    [TestClass]
+    public sealed class UT_VMObject
     {
-        public int Size { get; }
-        public int RefCount { get; }
+        [TestMethod]
+        public void Test()
+        {
 
-        public void AddReference();
-        public void Release();
-
+        }
     }
 }

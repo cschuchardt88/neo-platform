@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="src/Neo.VM/Neo.VM.csproj" Id="e38e01be-d9e4-4c1d-a0bc-b9a37250d446" />
+  <Project Path="tests/Neo.VM.Tests/Neo.VM.Tests.csproj" Id="47c53794-838b-4c3c-bc6c-e216708dd709" />
 </Solution>

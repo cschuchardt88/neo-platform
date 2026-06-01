@@ -20,15 +20,31 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.VM.Interfaces
+namespace Neo.VM.Types
 {
-    public interface IVMComponent : IDisposable
+    public class VMStruct(IEnumerable<VMObject> items) : VMArray(items)
     {
-        public int Size { get; }
-        public int RefCount { get; }
+        public override VMObjectType Type => VMObjectType.Struct;
 
-        public void AddReference();
-        public void Release();
+        public VMStruct() : this([]) { }
 
+        public override VMObject Clone()
+        {
+            var clone = new VMStruct();
+
+            _array.ForEach(i =>
+            {
+                if (i is null || i is VMNull)
+                    clone._array.Add(new VMNull());
+                else
+                {
+                    var cloneItem = i.Clone();
+                    clone._array.Add(cloneItem);
+                }
+            });
+
+            clone.AddReference();
+            return clone;
+        }
     }
 }

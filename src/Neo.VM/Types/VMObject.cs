@@ -30,6 +30,7 @@ namespace Neo.VM.Types
     {
         public abstract VMObjectType Type { get; }
 
+        public int Size => _memory.Length;
         public int RefCount => _refCount;
 
         private bool _disposed = false;
