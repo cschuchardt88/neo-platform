@@ -176,7 +176,7 @@ namespace Neo.VM.Types
             return Remove(item.Key);
         }
 
-        protected override IEnumerable<VMObject> GetChildren()
+        internal override IEnumerable<VMObject> GetChildren()
         {
             foreach (var kvp in _map)
             {

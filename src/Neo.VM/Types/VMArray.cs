@@ -159,7 +159,7 @@ namespace Neo.VM.Types
 
         #endregion
 
-        protected override IEnumerable<VMObject> GetChildren() =>
+        internal override IEnumerable<VMObject> GetChildren() =>
             _array;
 
         public void Reverse()

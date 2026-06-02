@@ -113,7 +113,7 @@ namespace Neo.VM.Types
             return DetectCycle(this, visited);
         }
 
-        protected virtual IEnumerable<VMObject> GetChildren() =>
+        internal virtual IEnumerable<VMObject> GetChildren() =>
             [];
 
         /// <summary>

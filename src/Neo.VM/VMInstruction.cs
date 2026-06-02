@@ -40,6 +40,9 @@ namespace Neo.VM
         public ReadOnlyMemory<byte> Operand { get; private init; }
         public int OperandSize { get; private init; }
         public int OperandPrefixSize { get; private init; }
+        public int Size => OperandPrefixSize > 0 ?
+            1 + OperandPrefixSize + Operand.Length :
+            1 + OperandSize;
 
         private static readonly int[] s_operandSizeTable = new int[256];
         private static readonly int[] s_operandSizePrefixTable = new int[256];

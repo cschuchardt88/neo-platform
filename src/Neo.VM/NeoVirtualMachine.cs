@@ -29,6 +29,23 @@ namespace Neo.VM
     {
         public VMState State { get; internal set; }
 
+        /// <summary>
+        /// The pointer indicating the current instruction.
+        /// </summary>
+        public int InstructionPointer { get; internal set; }
+
+        /// <summary>
+        /// Returns the current <see cref="VMInstruction"/>.
+        /// </summary>
+        public VMInstruction CurrentInstruction => new(_script, InstructionPointer);
+
+        /// <summary>
+        /// Returns the next <see cref="VMInstruction"/>.
+        /// </summary>
+        public VMInstruction NextInstruction => new(_script, InstructionPointer + CurrentInstruction.Size);
+
+        private readonly ReadOnlyMemory<byte> _script;
+
         public void Dispose()
         {
             GC.SuppressFinalize(this);

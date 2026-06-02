@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="HardForks\" />
-    <Folder Include="Core\" />
     <Folder Include="Interop\" />
     <Folder Include="Instructions\" />
   </ItemGroup>
