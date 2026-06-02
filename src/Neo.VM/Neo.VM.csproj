@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="HardForks\" />
     <Folder Include="Interop\" />
     <Folder Include="Instructions\" />
   </ItemGroup>
