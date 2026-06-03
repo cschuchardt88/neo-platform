@@ -1,0 +1,145 @@
+// BSD 2-Clause License
+//
+// Copyright (c) 2026, Rapid Loop
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES
+
+using Neo.VM.Types;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Neo.VM.Core
+{
+    public class ExecutionContext
+    {
+        /// <summary>
+        /// The script being executed (bytecode)
+        /// </summary>
+        public ReadOnlyMemory<byte> Script => _script;
+
+        /// <summary>
+        /// The pointer indicating the current instruction.
+        /// </summary>
+        public int InstructionPointer { get; internal set; }
+
+        /// <summary>
+        /// Returns the current <see cref="VMInstruction"/>.
+        /// </summary>
+        public VMInstruction CurrentInstruction => new(_script, InstructionPointer);
+
+        /// <summary>
+        /// Returns the next <see cref="VMInstruction"/>.
+        /// </summary>
+        public VMInstruction NextInstruction => new(_script, InstructionPointer + CurrentInstruction.Size);
+
+        /// <summary>
+        /// Current stack frame
+        /// </summary>
+        public StackFrame Frame { get; }
+
+        /// <summary>
+        /// Gas remaining for this execution
+        /// </summary>
+        public BigInteger Gas { get; set; }
+
+        /// <summary>
+        /// Whether this context is currently executing
+        /// </summary>
+        public bool IsExecuting { get; set; } = true;
+
+        /// <summary>
+        /// Parent context (for nested calls)
+        /// </summary>
+        public ExecutionContext? Parent { get; set; }
+
+        /// <summary>
+        /// Custom state / context data (e.g., contract storage, runtime)
+        /// </summary>
+        public Dictionary<Type, object> State { get; } = [];
+
+        /// <summary>
+        /// Invocation stack depth
+        /// </summary>
+        public int Depth { get; }
+
+        private readonly ReadOnlyMemory<byte> _script;
+
+        public ExecutionContext(byte[] script, int initialGas = 1000000, int depth = 0, ExecutionContext? parent = null)
+        {
+            _script = script.Clone() as byte[] ?? throw new ArgumentNullException(nameof(script));
+            Gas = initialGas;
+            Depth = depth;
+            Parent = parent;
+            Frame = new StackFrame(-1, null);
+        }
+
+        /// <summary>
+        /// Check if execution should continue
+        /// </summary>
+        public bool ShouldContinue()
+        {
+            return IsExecuting && InstructionPointer < Script.Length && Gas > 0;
+        }
+
+        /// <summary>
+        /// Consume gas for an operation
+        /// </summary>
+        public bool ConsumeGas(long amount)
+        {
+            if (Gas < amount)
+            {
+                Gas = 0;
+                IsExecuting = false;
+                return false;
+            }
+
+            Gas -= amount;
+            return true;
+        }
+
+        /// <summary>
+        /// Push value onto current frame's evaluation stack
+        /// </summary>
+        public void Push(VMObject item)
+        {
+            Frame.Push(item);
+        }
+
+        /// <summary>
+        /// Pop value from current frame's evaluation stack
+        /// </summary>
+        public VMObject Pop()
+        {
+            return Frame.Pop();
+        }
+
+        /// <summary>
+        /// Clean up this execution context
+        /// </summary>
+        public void Cleanup()
+        {
+            Frame.Cleanup();
+            IsExecuting = false;
+
+            // Clear custom state
+            State.Clear();
+        }
+    }
+}

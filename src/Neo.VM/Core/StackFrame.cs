@@ -21,6 +21,8 @@
 // SERVICES
 
 using Neo.VM.Types;
+using System;
+using System.Collections.Generic;
 
 namespace Neo.VM.Core
 {

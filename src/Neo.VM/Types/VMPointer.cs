@@ -20,6 +20,7 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
@@ -28,6 +29,8 @@ namespace Neo.VM.Types
     public class VMPointer : VMObject
     {
         public override VMObjectType Type => VMObjectType.Pointer;
+
+        public ReadOnlyMemory<byte> Script => _memory;
 
         public int Length => _memory.Length;
 

@@ -20,6 +20,12 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.VM.Core;
+using Neo.VM.Types;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
 namespace Neo.VM
 {
     /// <summary>
@@ -29,35 +35,141 @@ namespace Neo.VM
     {
         public VMState State { get; internal set; }
 
-        /// <summary>
-        /// The pointer indicating the current instruction.
-        /// </summary>
-        public int InstructionPointer { get; internal set; }
+        public BigInteger TotalGasConsumed { get; private set; }
 
         /// <summary>
-        /// Returns the current <see cref="VMInstruction"/>.
+        /// Restrictions on the VM.
         /// </summary>
-        public VMInstruction CurrentInstruction => new(_script, InstructionPointer);
+        public ExecutionEngineLimits Limits { get; } = ExecutionEngineLimits.Default;
 
         /// <summary>
-        /// Returns the next <see cref="VMInstruction"/>.
+        /// The invocation stack of the VM.
         /// </summary>
-        public VMInstruction NextInstruction => new(_script, InstructionPointer + CurrentInstruction.Size);
+        public Stack<ExecutionContext> InvocationStack => _invocationStack;
 
-        private readonly ReadOnlyMemory<byte> _script;
+        /// <summary>
+        /// The top frame of the invocation stack.
+        /// </summary>
+        public ExecutionContext? CurrentContext => _currentContext;
+
+        /// <summary>
+        /// The bottom frame of the invocation stack.
+        /// </summary>
+        public ExecutionContext? EntryContext => _entryContext;
+
+        /// <summary>
+        /// The stack to store the return values.
+        /// </summary>
+        public Stack<VMObject> ResultStack { get; } = [];
+
+        public bool IsRunning { get; internal set; } = false;
+
+        private readonly VirtualTable _defaultOpCodeTable = VirtualTable.Default;
+        private readonly Stack<ExecutionContext> _invocationStack = [];
+        private ExecutionContext? _currentContext;
+        private ExecutionContext? _entryContext;
 
         public void Dispose()
         {
             GC.SuppressFinalize(this);
         }
 
+        public ExecutionContext LoadScript(byte[] script, int initialPosition = 0)
+        {
+            var rootContext = new ExecutionContext(script, 1_00000000);
+
+            LoadContext(rootContext);
+            return rootContext;
+        }
+
+        /// <summary>
+        /// Loads the specified context into the invocation stack.
+        /// </summary>
+        /// <param name="context">The context to load.</param>
+        internal virtual void LoadContext(ExecutionContext context)
+        {
+            if (_invocationStack.Count >= Limits.MaxInvocationStackSize)
+                throw new InvalidOperationException($"MaxInvocationStackSize exceed: {InvocationStack.Count}");
+
+            _entryContext ??= context;
+            _currentContext = context;
+
+            InvocationStack.Push(context);
+        }
+
+        /// <summary>
+        /// Called when a context is unloaded.
+        /// </summary>
+        /// <param name="context">The context being unloaded.</param>
+        internal virtual void ContextUnloaded(ExecutionContext context)
+        {
+            if (InvocationStack.Count > 0)
+                _currentContext = InvocationStack.Peek();
+            else
+            {
+                _currentContext = null;
+                _entryContext = null;
+            }
+
+            context.Cleanup();
+        }
+
         public VMState Execute()
         {
+            TotalGasConsumed = 0;
+
             if (State == VMState.BREAK)
                 State = VMState.NONE;
-            while (State != VMState.HALT && State != VMState.FAULT)
-            { }
+
+            try
+            {
+                while ((State != VMState.HALT && State != VMState.FAULT)
+                    && _invocationStack.Count > 0)
+                {
+                    _currentContext = _invocationStack.Peek();
+
+                    if (!_currentContext.ShouldContinue())
+                        continue;
+
+                    var currentInst = _currentContext.CurrentInstruction;
+                    _defaultOpCodeTable[currentInst.OpCode](this, currentInst);
+
+                    if (!IsRunning && currentInst != null)
+                        _currentContext.InstructionPointer += currentInst.Size;
+                    IsRunning = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                OnFault(ex);
+            }
+            finally
+            {
+                Cleanup();
+            }
+
             return State;
+        }
+
+        /// <summary>
+        /// Called when an exception that cannot be caught by the VM is thrown.
+        /// </summary>
+        /// <param name="ex">The exception that caused the <see cref="VMState.FAULT"/> state.</param>
+        internal void OnFault(Exception ex)
+        {
+            State = VMState.FAULT;
+        }
+
+        private void Cleanup()
+        {
+            while (_invocationStack.Count > 0)
+            {
+                var context = _invocationStack.Pop();
+                context.Cleanup();
+            }
+
+            State = VMState.HALT;
+            IsRunning = false;
         }
     }
 }

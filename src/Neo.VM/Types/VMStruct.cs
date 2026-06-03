@@ -20,6 +20,8 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using System.Collections.Generic;
+
 namespace Neo.VM.Types
 {
     public class VMStruct(IEnumerable<VMObject> items) : VMArray(items)

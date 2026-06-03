@@ -20,6 +20,8 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using System;
+
 namespace Neo.VM.Interfaces
 {
     internal interface IVMComponent : IDisposable

@@ -20,41 +20,31 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using System;
-using System.Diagnostics.CodeAnalysis;
-
-namespace Neo.VM.Core
+namespace Neo.VM.Tests
 {
-    public delegate void VTableFunc(NeoVirtualMachine engine, VMInstruction instruction);
-
-    public partial class VirtualTable
+    [TestClass]
+    public class UT_NeoVirtualMachine
     {
-        public static readonly VirtualTable Default = new();
-
-        public VTableFunc[] Functions { get; protected set; } = new VTableFunc[byte.MaxValue];
-
-        public VTableFunc this[OpCode opCode]
+        [TestMethod]
+        public void TestVM()
         {
-            get => Functions[(byte)opCode];
-            protected set => Functions[(byte)opCode] = value;
-        }
+            byte[] script =
+            [
+                0x15,        // PUSH 5
+                0x16,        // PUSH 6
+                0x9e,        // ADD
+                0x40         // RET
+            ];
 
-        public VirtualTable()
-        {
-            Array.Fill(Functions, InvalidOpcode);
+            var vm = new NeoVirtualMachine();
+            vm.LoadScript(script);
 
-            foreach (var mi in GetType().GetMethods())
-            {
-                if (Enum.TryParse<OpCode>(mi.Name, true, out var opCode))
-                    Functions[(byte)opCode] = mi.CreateDelegate<VTableFunc>(this);
-            }
-        }
+            var actualState = vm.Execute();
+            var actualResults = vm.ResultStack;
 
-
-        [DoesNotReturn]
-        public static void InvalidOpcode(NeoVirtualMachine engine, VMInstruction instruction)
-        {
-            throw new InvalidOperationException($"Opcode {instruction.OpCode} is undefined.");
+            Assert.AreEqual(VMState.HALT, actualState);
+            Assert.HasCount(1, actualResults);
+            Assert.AreEqual(11, actualResults.Pop().GetInteger());
         }
     }
 }
