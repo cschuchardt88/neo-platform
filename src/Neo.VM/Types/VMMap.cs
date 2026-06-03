@@ -82,10 +82,29 @@ namespace Neo.VM.Types
             base.Dispose(disposing);
         }
 
+        public override bool Equals(object? obj)
+        {
+            if (obj is VMMap other && other.Count == Count)
+            {
+                var children = GetChildren().ToArray();
+                var otherChildren = other.GetChildren().ToArray();
+
+                for (var i = 0; i < Count; i++)
+                {
+                    if (!Equals(children[i], otherChildren[i]))
+                        return false;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
         public override int GetHashCode()
         {
-            return GetReadOnlySpan().ToArray()
-                .Aggregate(0, (hash, b) => (hash * 31) ^ b);
+            return _map.ToArray()
+                .Aggregate(17, (hash, b) => (hash * 31) + (b.Key.GetHashCode() ^ b.Value.GetHashCode()));
         }
 
         public void Add(VMObject key, VMObject value)

@@ -36,6 +36,11 @@ namespace Neo.VM.Types
             _value = value;
         }
 
+        public override int GetHashCode()
+        {
+            return _value ? 1 : 0;
+        }
+
         public override string ToString()
         {
             return _value.ToString();

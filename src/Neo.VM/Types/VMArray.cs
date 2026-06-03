@@ -82,8 +82,23 @@ namespace Neo.VM.Types
 
         public override int GetHashCode()
         {
-            return GetReadOnlySpan().ToArray()
-                .Aggregate(0, (hash, b) => (hash * 31) ^ b);
+            return _array.Aggregate(17, (hash, b) => (hash * 31) ^ b.GetHashCode());
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is VMArray other && other.Count == Count)
+            {
+                for (var i = 0; i < Count; i++)
+                {
+                    if (!Equals(this[i], other[i]))
+                        return false;
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         #region IEnumerable
@@ -163,7 +178,7 @@ namespace Neo.VM.Types
         #endregion
 
         internal override IEnumerable<VMObject> GetChildren() =>
-            _array;
+            [.. _array];
 
         public void Reverse()
         {

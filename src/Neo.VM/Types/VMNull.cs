@@ -42,7 +42,7 @@ namespace Neo.VM.Types
 
         public override bool Equals(object? obj)
         {
-            return obj is VMNull;
+            return obj is VMNull || obj is null;
         }
 
         public override int GetHashCode()

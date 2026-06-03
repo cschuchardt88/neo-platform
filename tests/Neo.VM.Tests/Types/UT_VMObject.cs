@@ -59,9 +59,9 @@ namespace Neo.VM.Tests.Types
             Assert.AreEqual(itemB.GetHashCode(), itemA.GetHashCode());
             Assert.AreNotEqual(itemC.GetHashCode(), itemA.GetHashCode());
 
-            itemA = new VMBuffer(1);
-            itemB = new VMBuffer(1);
-            itemC = new VMBuffer(2);
+            itemA = new VMBuffer([1]);
+            itemB = new VMBuffer([1]);
+            itemC = new VMBuffer([2]);
 
             Assert.AreNotEqual(0, itemA.GetHashCode());
             Assert.AreNotEqual(0, itemB.GetHashCode());
@@ -87,7 +87,7 @@ namespace Neo.VM.Tests.Types
 
             Assert.AreNotEqual(0, itemA.GetHashCode());
             Assert.AreNotEqual(0, itemB.GetHashCode());
-            Assert.AreNotEqual(0, itemC.GetHashCode());
+            Assert.AreEqual(0, itemC.GetHashCode());
 
             Assert.AreEqual(itemB.GetHashCode(), itemA.GetHashCode());
             Assert.AreNotEqual(itemC.GetHashCode(), itemA.GetHashCode());
@@ -181,10 +181,9 @@ namespace Neo.VM.Tests.Types
         public void TestNull()
         {
             VMObject nullItem = Array.Empty<byte>();
-            Assert.AreNotEqual(VMNull.Instance, nullItem);
 
-            nullItem = new VMNull();
-            Assert.AreEqual(VMNull.Instance, nullItem);
+            Assert.AreNotEqual(VMNull.Instance, nullItem);
+            Assert.AreEqual(VMNull.Instance, new VMNull());
         }
 
         [TestMethod]

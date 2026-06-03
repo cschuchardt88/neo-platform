@@ -23,7 +23,7 @@
 namespace Neo.VM.Tests
 {
     [TestClass]
-    public class UT_NeoVirtualMachine
+    public sealed class UT_NeoVirtualMachine
     {
         [TestMethod]
         public void TestVM()

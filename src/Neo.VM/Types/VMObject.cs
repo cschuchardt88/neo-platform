@@ -52,12 +52,13 @@ namespace Neo.VM.Types
             if (other is null) return false;
             if (Type != other.Type) return false;
             if (_disposed != other._disposed) return false;
-            return _refCount == other._refCount;
+            if (_refCount != other._refCount) return false;
+            return GetReadOnlySpan().SequenceEqual(other.GetReadOnlySpan());
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Type, RefCount);
+            return HashCode.Combine(Type, RefCount, _disposed);
         }
 
         #endregion
@@ -112,7 +113,7 @@ namespace Neo.VM.Types
 
         public bool HasCircularReference()
         {
-            var visited = new HashSet<VMObject>();
+            var visited = new HashSet<VMObject>(ReferenceEqualityComparer.Instance);
             return DetectCycle(this, visited);
         }
 
@@ -163,6 +164,7 @@ namespace Neo.VM.Types
             }
 
             visited.Remove(current);
+
             return false;
         }
 

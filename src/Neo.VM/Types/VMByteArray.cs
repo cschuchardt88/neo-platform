@@ -41,8 +41,10 @@ namespace Neo.VM.Types
 
         public override bool Equals(object? obj)
         {
-            if (ReferenceEquals(obj, this)) return true;
-            return Equals(obj as VMByteArray);
+            if (obj is VMByteArray other && other.Length == Length)
+                return _memory.Span.SequenceEqual(other._memory.Span);
+
+            return false;
         }
 
         public override int GetHashCode()

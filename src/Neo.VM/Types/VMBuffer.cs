@@ -21,6 +21,7 @@
 // SERVICES
 
 using System;
+using System.Linq;
 using System.Numerics;
 
 namespace Neo.VM.Types
@@ -51,6 +52,12 @@ namespace Neo.VM.Types
         {
             _memory = null; // Help GC
             base.Dispose(disposing);
+        }
+
+        public override int GetHashCode()
+        {
+            return _memory.ToArray()
+                .Aggregate(0, (hash, b) => (hash * 31) ^ b);
         }
 
         public override string ToString()
