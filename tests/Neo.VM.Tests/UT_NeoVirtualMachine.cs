@@ -20,13 +20,16 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.VM.Types;
+using System.Numerics;
+
 namespace Neo.VM.Tests
 {
     [TestClass]
     public sealed class UT_NeoVirtualMachine
     {
         [TestMethod]
-        public void TestVM()
+        public void TestVMSimple()
         {
             byte[] script =
             [
@@ -45,6 +48,53 @@ namespace Neo.VM.Tests
             Assert.AreEqual(VMState.HALT, actualState);
             Assert.HasCount(1, actualResults);
             Assert.AreEqual(11, actualResults.Pop().GetInteger());
+        }
+
+        [TestMethod]
+        public void TestVMPush()
+        {
+            using var sb = new ScriptBuilder()
+                .EmitPush(null as object)
+                .EmitPush([])
+                .EmitPush(true)
+                .EmitPush(false)
+                .EmitPush(-1)
+                .EmitPush(0)
+                .EmitPush(10)
+                .EmitPush(sbyte.MaxValue)
+                .EmitPush(short.MaxValue)
+                .EmitPush(int.MaxValue)
+                .EmitPush(long.MaxValue)
+                .EmitPush(BigInteger.Pow(long.MaxValue, 2))
+                .EmitPush("NEO")
+                .EmitPush(VMObjectType.Any)
+                .EmitReturn();
+
+            var script = sb.ToArray();
+
+            var vm = new NeoVirtualMachine();
+            vm.LoadScript(script);
+
+            var actualState = vm.Execute();
+            var actualResults = vm.ResultStack;
+
+            Assert.AreEqual(VMState.HALT, actualState);
+            Assert.HasCount(14, actualResults);
+
+            Assert.IsInstanceOfType<VMNull>(actualResults.Pop());
+            Assert.IsTrue(actualResults.Pop().GetReadOnlySpan().IsEmpty);
+            Assert.IsTrue(actualResults.Pop().GetBoolean());
+            Assert.IsFalse(actualResults.Pop().GetBoolean());
+            Assert.AreEqual(-1, actualResults.Pop().GetInteger());
+            Assert.AreEqual(0, actualResults.Pop().GetInteger());
+            Assert.AreEqual(10, actualResults.Pop().GetInteger());
+            Assert.AreEqual(sbyte.MaxValue, actualResults.Pop().GetInteger());
+            Assert.AreEqual(short.MaxValue, actualResults.Pop().GetInteger());
+            Assert.AreEqual(int.MaxValue, actualResults.Pop().GetInteger());
+            Assert.AreEqual(long.MaxValue, actualResults.Pop().GetInteger());
+            Assert.AreEqual(BigInteger.Pow(long.MaxValue, 2), actualResults.Pop().GetInteger());
+            Assert.IsTrue(new ReadOnlySpan<byte>(VMUility.StrictUtf8Encoding.GetBytes("NEO")).SequenceEqual(actualResults.Pop().GetReadOnlySpan()));
+            Assert.AreEqual(0, actualResults.Pop().GetInteger());
         }
     }
 }

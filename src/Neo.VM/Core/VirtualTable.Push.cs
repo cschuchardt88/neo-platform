@@ -146,7 +146,7 @@ namespace Neo.VM.Core
         /// <param name="instruction">The instruction being executed.</param>
         public virtual void PushData1(NeoVirtualMachine engine, VMInstruction instruction)
         {
-            engine.CurrentContext!.Push(instruction.Operand.ToArray());
+            engine.CurrentContext!.Push(instruction.Operand[instruction.OperandPrefixSize..].ToArray());
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace Neo.VM.Core
         /// <param name="instruction">The instruction being executed.</param>
         public virtual void PushData2(NeoVirtualMachine engine, VMInstruction instruction)
         {
-            engine.CurrentContext!.Push(instruction.Operand.ToArray());
+            engine.CurrentContext!.Push(instruction.Operand[instruction.OperandPrefixSize..].ToArray());
         }
 
         /// <summary>
@@ -170,7 +170,7 @@ namespace Neo.VM.Core
         /// <param name="instruction">The instruction being executed.</param>
         public virtual void PushData4(NeoVirtualMachine engine, VMInstruction instruction)
         {
-            engine.CurrentContext!.Push(instruction.Operand.ToArray());
+            engine.CurrentContext!.Push(instruction.Operand[instruction.OperandPrefixSize..].ToArray());
         }
 
         /// <summary>
