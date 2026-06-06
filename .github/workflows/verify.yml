@@ -1,4 +1,4 @@
-name: Test & Checks
+name: Branch Verifications
 
 on:
   push:
@@ -9,8 +9,10 @@ env:
   DOTNET_VERSION: 10.0.x
 
 jobs:
-  check-code:
+  verify-code:
+    name: Verify Code Format
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout (github)
       uses: actions/checkout@v6
@@ -23,9 +25,9 @@ jobs:
     - name: Verify Formatting
       run: dotnet format --verify-no-changes --verbosity diagnostic
 
-  check-packages:
-    name: Scan for Vulnerable Packages
-    needs: [Format]
+  verify-packages:
+    name: Verify Safe Packages
+    needs: [verify-code]
 
     timeout-minutes: 5
 
@@ -46,9 +48,9 @@ jobs:
     - name: Check Solution Packages
       run: dotnet list package --vulnerable --include-transitive
 
-  check-tests:
-    name: Run MSTest/VSTest for MacOS, Linux and Windows
-    needs: [Format]
+  verify-tests:
+    name: Verify Tests on MacOS, Linux and Windows
+    needs: [verify-code, verify-packages]
 
     timeout-minutes: 5
 
