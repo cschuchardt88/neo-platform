@@ -101,6 +101,10 @@ namespace Neo.VM.Tests.Cryptography.ECC
             var actualPoint1 = ECPoint.FromPrivateKey(s_privateKeyBytes, ECCurve.SecP256r1);
             var actualPoint2 = ECPoint.Parse("03" + Random.Shared.GetHexString(ECPoint.UncompressedLength - 1, true), ECCurve.SecP256r1);
 
+            Console.WriteLine($"expectedPoint: {expectedPoint}");
+            Console.WriteLine($"actualPoint1: {actualPoint1}");
+            Console.WriteLine($"actualPoint2: {actualPoint2}");
+
             Assert.AreEqual(expectedPoint.GetHashCode(), actualPoint1.GetHashCode());
             Assert.AreNotEqual(expectedPoint.GetHashCode(), actualPoint2.GetHashCode());
             Assert.AreNotEqual(actualPoint1.GetHashCode(), actualPoint2.GetHashCode());
