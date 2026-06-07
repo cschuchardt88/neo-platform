@@ -133,7 +133,7 @@ namespace Neo.VM.Cryptography.ECC
         {
             return _uncompressed.Aggregate(17,
                 (hash, b) =>
-                    (hash * 31) + (b ^ (byte)_curve.Name));
+                    (hash * 31) + b);
         }
 
         [return: MaybeNull]
