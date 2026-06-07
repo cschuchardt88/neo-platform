@@ -114,7 +114,7 @@ namespace Neo.VM.Types
 
         public override int GetHashCode()
         {
-            return _map.ToArray().Aggregate(17,
+            return _map.ToArray().Aggregate(RefCount,
                 (hash, b) =>
                     (hash * 31) + (b.Key.GetHashCode() ^ b.Value.GetHashCode()));
         }

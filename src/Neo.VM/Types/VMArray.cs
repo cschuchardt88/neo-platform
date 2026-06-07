@@ -82,7 +82,7 @@ namespace Neo.VM.Types
 
         public override int GetHashCode()
         {
-            return _array.Aggregate(17,
+            return _array.Aggregate(RefCount,
                 (hash, b) =>
                     (hash * 31) ^ b.GetHashCode());
         }

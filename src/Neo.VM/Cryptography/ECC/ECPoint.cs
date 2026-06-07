@@ -133,7 +133,7 @@ namespace Neo.VM.Cryptography.ECC
         {
             return _uncompressed.Aggregate(17,
                 (hash, b) =>
-                    (hash * 31) + b);
+                    (hash * 31) + (b ^ (byte)_curve.Name));
         }
 
         [return: MaybeNull]
@@ -183,7 +183,7 @@ namespace Neo.VM.Cryptography.ECC
                 _ => throw new FormatException()
             };
 
-            _uncompressed = new byte[UncompressedLength];
+            _uncompressed = GC.AllocateUninitializedArray<byte>(UncompressedLength, false);
             reader.ReadExactly(_uncompressed, 0, UncompressedLength);
 
             _x = new(_uncompressed.AsSpan()[1..33], true, true);

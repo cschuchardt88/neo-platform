@@ -62,9 +62,9 @@ namespace Neo.VM.Types
 
         public override int GetHashCode()
         {
-            return _memory.ToArray().Aggregate(17,
+            return _memory.ToArray().Aggregate(_ip,
                 (hash, b) =>
-                    (hash * 31) + (b ^ _ip));
+                    (hash * 31) ^ b);
         }
 
         public override VMObject Clone()

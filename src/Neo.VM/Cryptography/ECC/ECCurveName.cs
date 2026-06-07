@@ -24,6 +24,6 @@ namespace Neo.VM.Cryptography.ECC
 {
     public enum ECCurveName : byte
     {
-        SecP256r1 = 0x10,
+        SecP256r1 = 0,
     }
 }
