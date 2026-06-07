@@ -183,7 +183,7 @@ namespace Neo.VM.Cryptography.ECC
                 _ => throw new FormatException()
             };
 
-            _uncompressed = GC.AllocateUninitializedArray<byte>(UncompressedLength, false);
+            _uncompressed = new byte[UncompressedLength];
             reader.ReadExactly(_uncompressed, 0, UncompressedLength);
 
             _x = new(_uncompressed.AsSpan()[1..33], true, true);
