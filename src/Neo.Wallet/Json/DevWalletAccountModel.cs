@@ -20,37 +20,35 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Cryptography;
+using Neo.Configuration;
+using Neo.Configuration.Interfaces;
 using System;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Linq;
 
-namespace Neo.Configuration.Json.Converters
+namespace Neo.Wallet.Json
 {
-    public class JsonStringUInt160Converter : JsonConverter<UInt160?>
+    public class DevWalletAccountModel : WalletAccountModel, IMap<DevWalletAccount>
     {
-        public override UInt160? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            if (reader.TokenType != JsonTokenType.String)
-                throw new FormatException();
-
-            var valueString = reader.GetString();
-
-            if (string.IsNullOrEmpty(valueString))
-                return default;
-
-            if (UInt160.TryParse(valueString, out var scriptHash) == false)
-                throw new FormatException();
-
-            return scriptHash;
-        }
-
-        public override void Write(Utf8JsonWriter writer, UInt160? value, JsonSerializerOptions options)
-        {
-            if (value is null)
-                writer.WriteNullValue();
-            else
-                writer.WriteStringValue(value.ToString());
-        }
+        // TODO: Add support for MultiSigAddresses
+        public DevWalletAccount ToObject() =>
+            (Key is not null && Key.Length > 0)
+            ? new(
+                Key ?? [],
+                Extra?.ToObject() ?? ProtocolSettings.Default)
+            {
+                Label = Label,
+                IsDefault = IsDefault,
+                IsLocked = Lock,
+            }
+            : new(
+                Address ?? throw new InvalidOperationException(),
+                Extra?.ToObject() ?? ProtocolSettings.Default,
+                [.. Contract?.Parameters?.Select(s => s.ToObject()) ?? []],
+                Key)
+            {
+                Label = Label,
+                IsDefault = IsDefault,
+                IsLocked = Lock,
+            };
     }
 }

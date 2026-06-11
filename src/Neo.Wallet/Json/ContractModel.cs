@@ -20,33 +20,19 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.IO;
-using System;
+using Neo.Configuration.Json;
+using Neo.Configuration.Json.Converters;
+using System.Text.Json.Serialization;
 
-namespace Neo.Wallet
+namespace Neo.Wallet.Json
 {
-    public abstract class WalletBase
+    public class ContractModel : JsonModel
     {
-        /// <summary>
-        /// Decodes a private key from the specified WIF string.
-        /// </summary>
-        /// <param name="wif">The WIF string to be decoded.</param>
-        /// <returns>The decoded private key.</returns>
-        public static byte[] GetKeyFromWifString(string wif)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(wif);
+        [JsonConverter(typeof(JsonStringHexFormatConverter))]
+        public byte[]? Script { get; set; }
 
-            var data = Base58.DecodeCheck(wif);
+        public ContractParameterModel[]? Parameters { get; set; }
 
-            if (data.Length != 34 || data[0] != 0x80 || data[33] != 0x01)
-                throw new FormatException("Invalid WIF key");
-
-            var privateKey = new byte[32];
-
-            Buffer.BlockCopy(data, 1, privateKey, 0, privateKey.Length);
-            Array.Clear(data, 0, data.Length);
-
-            return privateKey;
-        }
+        public bool Deployed { get; set; }
     }
 }

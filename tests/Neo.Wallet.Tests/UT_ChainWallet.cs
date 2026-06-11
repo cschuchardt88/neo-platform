@@ -20,18 +20,27 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json.Converters;
-using System.Text.Json.Serialization;
+using System;
 
-namespace Neo.Configuration.Models.Wallets
+namespace Neo.Wallet.Tests
 {
-    public class ContractModel : JsonModel
+    [TestClass]
+    public class UT_ChainWallet
     {
-        [JsonConverter(typeof(JsonStringHexFormatConverter))]
-        public byte[]? Script { get; set; }
+        [TestMethod]
+        public void TestGetKeyFromWifString()
+        {
+            var expectedKeyBytes = Convert.FromHexString("c7134d6fd8e73d819e82755c64c93788d8db0961929e025a53363c4cc02a6962");
 
-        public ContractParameterModel[]? Parameters { get; set; }
+            var action = () => ChainWallet.GetKeyFromWifString(string.Empty);
+            Assert.ThrowsExactly<ArgumentException>(action);
 
-        public bool Deployed { get; set; }
+            action = () => ChainWallet.GetKeyFromWifString("3vQB7B6MrGQZaxCuFg4oh");
+            Assert.ThrowsExactly<FormatException>(action);
+
+            var actualKeyBytes = ChainWallet.GetKeyFromWifString("L3tgppXLgdaeqSGSFw1Go3skBiy8vQAM7YMXvTHsKQtE16PBncSU");
+
+            CollectionAssert.AreEqual(expectedKeyBytes, actualKeyBytes);
+        }
     }
 }

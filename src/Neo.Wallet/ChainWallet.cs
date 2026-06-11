@@ -20,37 +20,38 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Cryptography;
+using Neo.Configuration.Json;
+using Neo.IO;
+using Neo.Wallet.Json;
 using System;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.IO;
 
-namespace Neo.Configuration.Json.Converters
+namespace Neo.Wallet
 {
-    public class JsonStringUInt160Converter : JsonConverter<UInt160?>
+    public static class ChainWallet
     {
-        public override UInt160? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public const int MaxPrivateKeySizeInBytes = 32;
+
+        /// <summary>
+        /// Decodes a private key from the specified WIF string.
+        /// </summary>
+        /// <param name="wif">The WIF string to be decoded.</param>
+        /// <returns>The decoded private key.</returns>
+        public static byte[] GetKeyFromWifString(string wif)
         {
-            if (reader.TokenType != JsonTokenType.String)
-                throw new FormatException();
+            ArgumentException.ThrowIfNullOrWhiteSpace(wif);
 
-            var valueString = reader.GetString();
+            var decodedWifBytes = Base58.DecodeCheck(wif);
 
-            if (string.IsNullOrEmpty(valueString))
-                return default;
+            if (decodedWifBytes.Length != 34 ||
+                decodedWifBytes[0] != 0x80 ||
+                decodedWifBytes[33] != 0x01)
+                throw new FormatException("Invalid WIF key");
 
-            if (UInt160.TryParse(valueString, out var scriptHash) == false)
-                throw new FormatException();
-
-            return scriptHash;
+            return decodedWifBytes[1..^1];
         }
 
-        public override void Write(Utf8JsonWriter writer, UInt160? value, JsonSerializerOptions options)
-        {
-            if (value is null)
-                writer.WriteNullValue();
-            else
-                writer.WriteStringValue(value.ToString());
-        }
+        public static DevWallet OpenDevFile(FileInfo file) =>
+            JsonModel.FromJson<DevWalletModel>(file)?.ToObject() ?? new();
     }
 }

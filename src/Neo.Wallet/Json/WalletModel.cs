@@ -20,28 +20,23 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json.Converters;
-using Neo.Cryptography;
+using Neo.Configuration.Json;
+using System;
 using System.Text.Json.Serialization;
 
-namespace Neo.Configuration.Models.Wallets
+namespace Neo.Wallet.Json
 {
-    public class WalletAccountModel : JsonModel
+    public class WalletModel : JsonModel
     {
-        [JsonConverter(typeof(JsonStringAddressConverter))]
-        public UInt160? Address { get; set; }
+        public string? Name { get; set; }
 
-        public string? Label { get; set; }
+        public Version? Version { get; set; }
 
-        public bool IsDefault { get; set; }
+        [JsonPropertyName("scrypt")]
+        public SCryptModel? SCrypt { get; set; }
 
-        public bool Lock { get; set; }
+        public WalletAccountModel[]? Accounts { get; set; }
 
-        [JsonConverter(typeof(JsonStringHexFormatConverter))]
-        public byte[]? Key { get; set; }
-
-        public ContractModel? Contract { get; set; }
-
-        public ProtocolSettingsModel? Extra { get; set; }
+        public virtual object? Extra { get; set; }
     }
 }
