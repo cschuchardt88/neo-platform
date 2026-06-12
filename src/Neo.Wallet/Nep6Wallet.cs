@@ -22,10 +22,10 @@
 
 using Neo.Configuration;
 using Neo.Configuration.Interfaces;
-using Neo.Cryptography;
-using Neo.Cryptography.ECC;
-using Neo.Cryptography.Extensions;
-using Neo.SmartContract;
+using Neo.Core;
+using Neo.Core.Cryptography.ECC;
+using Neo.Core.Extensions;
+using Neo.Core.SmartContract;
 using Neo.Wallet.Cryptography;
 using Neo.Wallet.Json;
 using System;
@@ -128,8 +128,8 @@ namespace Neo.Wallet
         public IWalletAccount<ProtocolSettings> GetAccount(UInt160 scriptHash) =>
             _walletAccounts[scriptHash];
 
-        public IWalletAccount<ProtocolSettings> GetAccount(ECPoint publickKey) =>
-            _walletAccounts[publickKey.Encode(true).ToScriptHash()];
+        public IWalletAccount<ProtocolSettings> GetAccount(ECPoint publicKey) =>
+            _walletAccounts[publicKey.Encode(true).ToScriptHash()];
 
         public IEnumerable<IWalletAccount<ProtocolSettings>> GetAccounts() =>
             _walletAccounts.Values;

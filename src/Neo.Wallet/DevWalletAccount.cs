@@ -22,11 +22,11 @@
 
 using Neo.Configuration;
 using Neo.Configuration.Interfaces;
+using Neo.Core;
+using Neo.Core.Cryptography;
+using Neo.Core.Cryptography.ECC;
+using Neo.Core.Extensions;
 using Neo.Core.SmartContract;
-using Neo.Cryptography;
-using Neo.Cryptography.ECC;
-using Neo.Cryptography.Extensions;
-using Neo.SmartContract;
 using Neo.Wallet.Json;
 using System;
 using System.Diagnostics.CodeAnalysis;
