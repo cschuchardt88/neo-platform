@@ -34,7 +34,7 @@ using System.Linq;
 
 namespace Neo.Wallet
 {
-    public class DevWalletAccount : IWalletAccount<ProtocolSettings>, IMap<WalletAccountModel>
+    public class DevWalletAccount : IWalletAccount<ProtocolSettings>, IMap<DevWalletAccountModel>
     {
         public ProtocolSettings ProtocolConfiguration => _protocolSettings;
 
@@ -92,14 +92,23 @@ namespace Neo.Wallet
             _witnessContract = WitnessContract.CreateSignatureContract(publicKeyPoint);
         }
 
+        public override string ToString() =>
+            $"{ToObject()}";
+
         [DoesNotReturn]
-        public bool ChangePassword(string oldPassword, string newPassword)
+        public bool ChangePassword(ProtectedString oldPassword, ProtectedString newPassword)
         {
             throw new NotSupportedException();
         }
 
         [DoesNotReturn]
-        public bool VerifyPassword(string password)
+        public bool VerifyPassword(ProtectedString password)
+        {
+            throw new NotSupportedException();
+        }
+
+        [DoesNotReturn]
+        public void SetLock()
         {
             throw new NotSupportedException();
         }
@@ -107,7 +116,7 @@ namespace Neo.Wallet
         public byte[] GetPrivateKey() =>
             _privateKeyBytes[..];
 
-        public WalletAccountModel ToObject() =>
+        public DevWalletAccountModel ToObject() =>
             new()
             {
                 Address = Address,
@@ -120,7 +129,7 @@ namespace Neo.Wallet
                             .Select(static (s, i) =>
                                 new ContractParameterModel()
                                 {
-                                    Name = $"Signature{i}",
+                                    Name = $"Parameter{i}",
                                     Type = s,
                                 }
                             ),

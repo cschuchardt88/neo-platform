@@ -20,25 +20,23 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Configuration.Interfaces;
 using Neo.Configuration.Json;
-using System;
+using Neo.Configuration.Json.Converters;
 using System.Text.Json.Serialization;
 
 namespace Neo.Wallet.Json
 {
-    public class WalletModel<TExtras, TAccountModel> : JsonModel
-        where TExtras : class?, new()
-        where TAccountModel : class?, new()
+    public class Nep6WalletAccountModel : WalletAccountModel<ProtocolSettingsModel>, IMap<Nep6WalletAccount>
     {
-        public string? Name { get; set; }
+        [JsonConverter(typeof(JsonStringByteArrayConverter))]
+        public override byte[]? Key { get => base.Key; set => base.Key = value; }
 
-        public Version? Version { get; set; }
-
-        [JsonPropertyName("scrypt")]
-        public SCryptModel? SCrypt { get; set; }
-
-        public TAccountModel[]? Accounts { get; set; }
-
-        public TExtras? Extra { get; set; }
+        /// <summary>
+        /// Moves property values from <see cref="Nep6WalletAccountModel"/> to <see cref="Nep6WalletAccount"/> with <see cref="SCryptModel.Default"/> setting.
+        /// </summary>
+        /// <returns>A new <see cref="Nep6WalletAccount"/> object.</returns>
+        public Nep6WalletAccount ToObject() =>
+            new(this);
     }
 }

@@ -35,50 +35,63 @@ using RandomNumberGenerator = System.Security.Cryptography.RandomNumberGenerator
 
 namespace Neo.Wallet
 {
-    public class DevWallet : IWallet<object, ProtocolSettings>, IMap<DevWalletModel>
+    public class Nep6Wallet : IWallet<object, ProtocolSettings>, IMap<Nep6WalletModel>
     {
         private static readonly Version s_walletVersion = new(1, 0);
 
         public Version Version => s_walletVersion;
 
-        public ScryptParameters SCrypt => _scryptParameters;
-
         public string? Name { get; set; }
 
-        public object? Extra => null;
+        public ScryptParameters SCrypt => _scryptParameters;
 
-        private readonly Dictionary<UInt160, DevWalletAccount> _walletAccounts = [];
+        public object? Extra { get; set; }
+
+        private readonly Dictionary<UInt160, Nep6WalletAccount> _walletAccounts = [];
         private readonly ScryptParameters _scryptParameters;
 
-        public DevWallet()
+        public Nep6Wallet(ScryptParameters? scryptParameters = default)
         {
-            _scryptParameters = ScryptParameters.Default;
+            _scryptParameters = scryptParameters ?? ScryptParameters.Default;
         }
 
-        public DevWallet(DevWalletModel devWalletModel) : this()
+        public Nep6Wallet(Nep6WalletModel nep6WalletModel)
         {
-            _scryptParameters = devWalletModel.SCrypt?.ToObject() ?? ScryptParameters.Default;
+            _scryptParameters = nep6WalletModel.SCrypt?.ToObject() ?? ScryptParameters.Default;
 
-            if (devWalletModel.Accounts is not null)
+            if (nep6WalletModel.Accounts is not null)
             {
-                foreach (var account in devWalletModel.Accounts
-                    .Select(s => ((DevWalletAccountModel)s).ToObject()))
-                    _walletAccounts[account.ScriptHash] = account;
+                foreach (var accountModel in nep6WalletModel.Accounts)
+                {
+                    if (accountModel.Key is null) continue;
+                    if (accountModel.Contract is null) continue;
+
+                    var account = new Nep6WalletAccount(accountModel, _scryptParameters);
+
+                    _walletAccounts[account.Address] = account;
+                }
             }
         }
 
-        public override string ToString() =>
-            $"{ToObject()}";
-
         public bool Contains(UInt160 scriptHash) =>
             _walletAccounts.ContainsKey(scriptHash);
+
+        public IWalletAccount<ProtocolSettings> CreateAccount(Nep6WalletAccountModel walletAccountModel)
+        {
+            if (walletAccountModel.Address is null)
+                throw new InvalidOperationException();
+
+            var account = new Nep6WalletAccount(walletAccountModel, _scryptParameters);
+
+            return _walletAccounts[walletAccountModel.Address] = account;
+        }
 
         public IWalletAccount<ProtocolSettings> CreateAccount(ProtocolSettings protocolSettings) =>
             CreateAccount(RandomNumberGenerator.GetBytes(ChainWallet.MaxPrivateKeySizeInBytes), protocolSettings);
 
         public IWalletAccount<ProtocolSettings> CreateAccount(byte[] privateKeyBytes, ProtocolSettings protocolSettings)
         {
-            var newWalletAccount = new DevWalletAccount(privateKeyBytes, protocolSettings);
+            var newWalletAccount = new Nep6WalletAccount(privateKeyBytes, protocolSettings, scryptParameters: _scryptParameters);
 
             if (Contains(newWalletAccount.ScriptHash))
                 throw new InvalidOperationException();
@@ -91,20 +104,12 @@ namespace Neo.Wallet
 
         public IWalletAccount<ProtocolSettings> CreateAccount(UInt160 contractHash, ProtocolSettings protocolSettings)
         {
-            var newWalletAccount = new DevWalletAccount(contractHash, protocolSettings);
+            var newWalletAccount = new Nep6WalletAccount(contractHash, protocolSettings, scryptParameters: _scryptParameters);
 
             if (Contains(newWalletAccount.ScriptHash))
                 throw new InvalidOperationException();
 
             return _walletAccounts[newWalletAccount.ScriptHash] = newWalletAccount;
-        }
-
-        public IWalletAccount<ProtocolSettings> CreateAccount(DevWalletAccountModel walletAccountModel)
-        {
-            if (walletAccountModel.Address is null)
-                throw new InvalidOperationException();
-
-            return _walletAccounts[walletAccountModel.Address] = walletAccountModel.ToObject();
         }
 
         public IWalletAccount<ProtocolSettings> CreateMultiSigAccount(ProtocolSettings protocolSettings, params ECPoint[] publicKeys) =>
@@ -112,16 +117,13 @@ namespace Neo.Wallet
 
         public IWalletAccount<ProtocolSettings> CreateMultiSigAccount(ProtocolSettings protocolSettings, int m, params ECPoint[] publicKeys)
         {
-            var newWalletAccount = new DevWalletAccount(m, publicKeys, protocolSettings);
+            var newWalletAccount = new Nep6WalletAccount(m, publicKeys, protocolSettings, _scryptParameters);
 
             if (Contains(newWalletAccount.ScriptHash))
                 throw new InvalidOperationException();
 
             return _walletAccounts[newWalletAccount.ScriptHash] = newWalletAccount;
         }
-
-        public bool RemoveAccount(UInt160 scriptHash) =>
-            _walletAccounts.Remove(scriptHash);
 
         public IWalletAccount<ProtocolSettings> GetAccount(UInt160 scriptHash) =>
             _walletAccounts[scriptHash];
@@ -131,9 +133,6 @@ namespace Neo.Wallet
 
         public IEnumerable<IWalletAccount<ProtocolSettings>> GetAccounts() =>
             _walletAccounts.Values;
-
-        public IEnumerable<IWalletAccount<ProtocolSettings>> GetNetworkAccounts(uint network) =>
-            _walletAccounts.Values.Where(s => s.ProtocolConfiguration.Network == network);
 
         public IEnumerable<IWalletAccount<ProtocolSettings>> GetContractAccounts() =>
             _walletAccounts.Values.Where(
@@ -150,6 +149,12 @@ namespace Neo.Wallet
                     WitnessContract.IsMultiSigContract(w.Contract.Script)
             );
 
+        public IEnumerable<IWalletAccount<ProtocolSettings>> GetNetworkAccounts(uint network) =>
+            _walletAccounts.Values.Where(s => s.ProtocolConfiguration.Network == network);
+
+        public bool RemoveAccount(UInt160 scriptHash) =>
+            _walletAccounts.Remove(scriptHash);
+
         public void SetDefaultAccount(UInt160 scriptHash)
         {
             if (Contains(scriptHash))
@@ -163,7 +168,7 @@ namespace Neo.Wallet
             _walletAccounts[scriptHash].IsDefault = true;
         }
 
-        public DevWalletModel ToObject() =>
+        public Nep6WalletModel ToObject() =>
             new()
             {
                 Version = Version,

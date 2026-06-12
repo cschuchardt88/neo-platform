@@ -20,25 +20,13 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
-using System;
-using System.Text.Json.Serialization;
+using Neo.Configuration.Interfaces;
 
 namespace Neo.Wallet.Json
 {
-    public class WalletModel<TExtras, TAccountModel> : JsonModel
-        where TExtras : class?, new()
-        where TAccountModel : class?, new()
+    public class Nep6WalletModel : WalletModel<object, Nep6WalletAccountModel>, IMap<Nep6Wallet>
     {
-        public string? Name { get; set; }
-
-        public Version? Version { get; set; }
-
-        [JsonPropertyName("scrypt")]
-        public SCryptModel? SCrypt { get; set; }
-
-        public TAccountModel[]? Accounts { get; set; }
-
-        public TExtras? Extra { get; set; }
+        public Nep6Wallet ToObject() =>
+            new(this);
     }
 }
