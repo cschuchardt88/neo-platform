@@ -20,56 +20,90 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.Extensions;
 using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMPointer : VMObject
+    public class VMPointer : VMObject, IEquatable<VMPointer>
     {
         public override VMObjectType Type => VMObjectType.Pointer;
 
-        public ReadOnlyMemory<byte> Script => _memory;
+        public ReadOnlyMemory<byte> Script => _memoryOwner.Memory[.._byteCount];
 
-        public int Length => _memory.Length;
+        public int Length => _byteCount;
 
         public int Position => _ip;
 
-        private readonly ReadOnlyMemory<byte> _memory;
+        private readonly IMemoryOwner<byte> _memoryOwner;
         private readonly int _ip = 0;
+        private readonly int _byteCount;
 
         public VMPointer(byte[] script, int ip)
         {
-            _memory = script.Clone() as byte[] ?? [];
             _ip = ip;
+            _byteCount = script.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            script.AsMemory().TryCopyTo(_memoryOwner.Memory);
+        }
+
+        public VMPointer(Memory<byte> script, int ip)
+        {
+            _ip = ip;
+            _byteCount = script.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            script.TryCopyTo(_memoryOwner.Memory);
         }
 
         public VMPointer(ReadOnlyMemory<byte> script, int ip)
         {
-            _memory = script;
             _ip = ip;
+            _byteCount = script.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            script.TryCopyTo(_memoryOwner.Memory);
         }
 
-        public override bool Equals(VMObject? other)
+        public VMPointer(VMByteArray script, int ip)
         {
-            if (other is VMPointer p)
-                return _ip == p._ip && base.Equals(other);
+            _ip = ip;
+            _byteCount = script.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            script.GetReadOnlySpan().TryCopyTo(_memoryOwner.Memory.Span);
+        }
 
-            return base.Equals(other);
+        public bool Equals(VMPointer? other)
+        {
+            if (ReferenceEquals(other, this)) return true;
+            if (other is null) return false;
+            if (RefCount != other.RefCount) return false;
+            if (Length != other.Length) return false;
+            return _ip == other._ip &&
+                _memoryOwner.Memory[.._byteCount]
+                .Span
+                .SequenceEqual(other._memoryOwner.Memory[..other._byteCount].Span);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return false;
+            return Equals(obj as VMPointer);
         }
 
         public override int GetHashCode()
         {
-            return _memory.ToArray().Aggregate(_ip,
-                (hash, b) =>
-                        (hash * 31) ^ b);
+            return (31 * _ip) ^
+                _memoryOwner.Memory[.._byteCount]
+                .ToHashCode(RefCount ^ 397);
         }
 
         public override VMObject Clone()
         {
-            var clone = new VMPointer(_memory.ToArray(), _ip);
+            var clone = new VMPointer(_memoryOwner.Memory[.._byteCount].ToArray(), _ip);
 
             clone.AddReference();
 
@@ -89,7 +123,7 @@ namespace Neo.VM.Types
 
         public override ReadOnlySpan<byte> GetReadOnlySpan()
         {
-            return _memory.ToArray();
+            return _memoryOwner.Memory[.._byteCount].Span;
         }
     }
 }

@@ -20,29 +20,21 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.Serialization;
-using System.IO;
-using System.Linq;
-
-namespace Neo.Core.Extensions
+namespace Neo.Core.Blockchain
 {
-    public static class INeoSerializableExtensions
+    /// <summary>
+    /// Indicates the action to be taken if the current context meets with the rule.
+    /// </summary>
+    public enum WitnessRuleAction : byte
     {
         /// <summary>
-        /// Converts an <see cref="INeoSerializable"/> object to a byte array.
+        /// Deny the witness according to the rule.
         /// </summary>
-        /// <param name="source">The <see cref="INeoSerializable"/> object to be converted.</param>
-        /// <returns>The converted byte array.</returns>
-        public static byte[] ToArray(this INeoSerializable source)
-        {
-            using var ms = new MemoryStream();
+        Deny = 0,
 
-            source.Serialize(ms);
-            return ms.ToArray();
-        }
-
-        public static int GetSerializedSize(this INeoSerializable[] source) =>
-            source.Length.GetCompactSize() +
-            (source.Length * source.Sum(s => s.Size));
+        /// <summary>
+        /// Allow the witness according to the rule.
+        /// </summary>
+        Allow = 1
     }
 }

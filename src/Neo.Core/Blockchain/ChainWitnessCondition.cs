@@ -20,29 +20,34 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.Extensions;
 using Neo.Core.Serialization;
+using System;
 using System.IO;
-using System.Linq;
+using System.Runtime.CompilerServices;
 
-namespace Neo.Core.Extensions
+namespace Neo.Core.Blockchain
 {
-    public static class INeoSerializableExtensions
+    public abstract class ChainWitnessCondition : INeoSerializable
     {
         /// <summary>
-        /// Converts an <see cref="INeoSerializable"/> object to a byte array.
+        /// The type of the <see cref="ChainWitnessCondition"/>.
         /// </summary>
-        /// <param name="source">The <see cref="INeoSerializable"/> object to be converted.</param>
-        /// <returns>The converted byte array.</returns>
-        public static byte[] ToArray(this INeoSerializable source)
-        {
-            using var ms = new MemoryStream();
+        public abstract WitnessConditionType Type { get; }
 
-            source.Serialize(ms);
-            return ms.ToArray();
+        public virtual int Size => Unsafe.SizeOf<WitnessConditionType>();
+
+        public void Deserialize(Stream reader)
+        {
+            var type = reader.Read<WitnessConditionType>();
+
+            if (type != Type)
+                throw new FormatException($"[{nameof(ChainWitnessCondition)}] Value \'{type}\' does not match \'{Type}\'.");
         }
 
-        public static int GetSerializedSize(this INeoSerializable[] source) =>
-            source.Length.GetCompactSize() +
-            (source.Length * source.Sum(s => s.Size));
+        public void Serialize(Stream writer)
+        {
+            writer.Write(Type);
+        }
     }
 }
