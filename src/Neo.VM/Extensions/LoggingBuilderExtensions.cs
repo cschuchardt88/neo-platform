@@ -20,42 +20,33 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.VM;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Configuration;
+using Neo.VM.Logging;
 using System;
-using System.Diagnostics.CodeAnalysis;
 
-namespace Neo.VM.Core
+namespace Neo.VM.Tests.Extensions
 {
-    public delegate void VTableFunc(VirtualMachine engine, VMInstruction instruction);
-
-    public partial class VirtualTable
+    internal static class LoggingBuilderExtensions
     {
-        public static readonly VirtualTable Default = new();
-
-        public VTableFunc[] Functions { get; protected set; } = new VTableFunc[byte.MaxValue];
-
-        public VTableFunc this[OpCode opCode]
+        public static ILoggingBuilder AddTraceExecution(this ILoggingBuilder builder)
         {
-            get => Functions[(byte)opCode];
-            protected set => Functions[(byte)opCode] = value;
+            builder.AddConfiguration();
+
+            builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, TraceExecutionLoggerProvider>());
+
+            LoggerProviderOptions.RegisterProviderOptions<TraceExecutionLoggerOptions, TraceExecutionLoggerProvider>(builder.Services);
+
+            return builder;
         }
 
-        public VirtualTable()
+        public static ILoggingBuilder AddTraceExecution(this ILoggingBuilder builder, Action<TraceExecutionLoggerOptions> configure)
         {
-            Array.Fill(Functions, InvalidOpcode);
-
-            foreach (var mi in GetType().GetMethods())
-            {
-                if (Enum.TryParse<OpCode>(mi.Name, true, out var opCode))
-                    Functions[(byte)opCode] = mi.CreateDelegate<VTableFunc>(this);
-            }
-        }
-
-
-        [DoesNotReturn]
-        public static void InvalidOpcode(VirtualMachine engine, VMInstruction instruction)
-        {
-            throw new InvalidOperationException($"Opcode {instruction.OpCode} is undefined.");
+            builder.AddTraceExecution();
+            builder.Services.Configure(configure);
+            return builder;
         }
     }
 }

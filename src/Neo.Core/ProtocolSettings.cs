@@ -124,5 +124,11 @@ namespace Neo.Core
             MaxTraceableBlocks = 2_102_400u,
             InitialGasDistribution = 52_000_000_00000000ul,
         };
+
+        public HardFork GetActiveHardFork(long blockHeight) =>
+            HardForks
+                .OrderBy(static o => o.Key)
+                .LastOrDefault(l => l.Value <= blockHeight)
+            .Key;
     }
 }

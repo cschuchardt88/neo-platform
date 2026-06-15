@@ -20,42 +20,17 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.VM;
-using System;
+using Microsoft.Extensions.Localization;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Neo.VM.Core
+namespace Neo.Localization.VM
 {
-    public delegate void VTableFunc(VirtualMachine engine, VMInstruction instruction);
-
-    public partial class VirtualTable
+    public static class VirtualMachineLocalizer
     {
-        public static readonly VirtualTable Default = new();
+        private static readonly IStringLocalizer s_localizer = ResourceFactory.Instance.Create(typeof(VirtualMachineLocalizer));
 
-        public VTableFunc[] Functions { get; protected set; } = new VTableFunc[byte.MaxValue];
-
-        public VTableFunc this[OpCode opCode]
-        {
-            get => Functions[(byte)opCode];
-            protected set => Functions[(byte)opCode] = value;
-        }
-
-        public VirtualTable()
-        {
-            Array.Fill(Functions, InvalidOpcode);
-
-            foreach (var mi in GetType().GetMethods())
-            {
-                if (Enum.TryParse<OpCode>(mi.Name, true, out var opCode))
-                    Functions[(byte)opCode] = mi.CreateDelegate<VTableFunc>(this);
-            }
-        }
-
-
-        [DoesNotReturn]
-        public static void InvalidOpcode(VirtualMachine engine, VMInstruction instruction)
-        {
-            throw new InvalidOperationException($"Opcode {instruction.OpCode} is undefined.");
-        }
+        [return: NotNullIfNotNull(nameof(s_localizer))]
+        public static string GetMessage(string messageName, params object[] args) =>
+            s_localizer[messageName, args];
     }
 }

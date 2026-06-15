@@ -20,6 +20,12 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Neo.Core;
+using Neo.Core.Blockchain;
+using Neo.Core.Blockchain.Interface;
+using Neo.Core.VM;
 using Neo.VM.Core;
 using Neo.VM.Types;
 using System;
@@ -31,16 +37,16 @@ namespace Neo.VM
     /// <summary>
     /// Represents the VM used to execute the script.
     /// </summary>
-    public class NeoVirtualMachine : IDisposable
+    public partial class VirtualMachine : IDisposable
     {
         public VMState State { get; internal set; }
 
-        public BigInteger TotalGasConsumed { get; private set; }
+        public BigInteger TotalGasConsumed => _maxGasConsumed;
 
         /// <summary>
         /// Restrictions on the VM.
         /// </summary>
-        public ExecutionEngineLimits Limits { get; } = ExecutionEngineLimits.Default;
+        public ExecutionEngineLimits Limits => _limits;
 
         /// <summary>
         /// The invocation stack of the VM.
@@ -62,12 +68,42 @@ namespace Neo.VM
         /// </summary>
         public Stack<VMObject> ResultStack { get; } = [];
 
-        public bool IsRunning { get; internal set; } = false;
-
-        private readonly VirtualTable _defaultOpCodeTable = VirtualTable.Default;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger _logger;
         private readonly Stack<ExecutionContext> _invocationStack = [];
+        private readonly VirtualTable _defaultOpCodeTable;
+        private readonly ExecutionEngineLimits _limits;
+        private readonly long _maxGasLimit;
+
+        private readonly ProtocolSettings _protocolSettings;
+        private readonly Block _persistingBlock;
+        private readonly IVerifiable _container;
+        private readonly HardFork _currentFork;
+
         private ExecutionContext? _currentContext;
         private ExecutionContext? _entryContext;
+
+        private long _maxGasConsumed;
+
+        public VirtualMachine(
+            ProtocolSettings? protocolSettings = default,
+            Block? persistingBlock = default,
+            IVerifiable? container = default,
+            long gasLimit = ExecutionEngineLimits.MaxGas,
+            VirtualTable? opCodeTable = default,
+            ExecutionEngineLimits? limits = default,
+            ILoggerFactory? loggerFactory = default)
+        {
+            _protocolSettings = protocolSettings ?? ProtocolSettings.Default;
+            _persistingBlock = persistingBlock ?? new Block();
+            _container = container ?? new Transaction();
+            _maxGasLimit = gasLimit;
+            _defaultOpCodeTable = opCodeTable ?? VirtualTable.Default;
+            _limits = limits ?? ExecutionEngineLimits.Default;
+            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            _logger = _loggerFactory.CreateLogger<VirtualMachine>();
+            _currentFork = _protocolSettings.GetActiveHardFork(_persistingBlock.Index);
+        }
 
         public void Dispose()
         {
@@ -76,7 +112,14 @@ namespace Neo.VM
 
         public ExecutionContext LoadScript(byte[] script, int initialPosition = 0)
         {
-            var rootContext = new ExecutionContext(script); // TODO: Pass parameters for Transaction Class
+            var activeFork = _protocolSettings.GetActiveHardFork(_persistingBlock.Index);
+
+            var rootContext = new ExecutionContext(
+                script,
+                activeFork,
+                _persistingBlock.Index,
+                _maxGasLimit - _maxGasConsumed
+            );
 
             LoadContext(rootContext);
             return rootContext;
@@ -89,10 +132,12 @@ namespace Neo.VM
         internal virtual void LoadContext(ExecutionContext context)
         {
             if (_invocationStack.Count >= Limits.MaxInvocationStackSize)
-                throw new InvalidOperationException($"MaxInvocationStackSize exceed: {InvocationStack.Count}");
+                throw new InvalidOperationException($"{nameof(Limits.MaxInvocationStackSize)} exceed: {InvocationStack.Count}");
 
             _entryContext ??= context;
             _currentContext = context;
+
+            // NOTE: May need to update the context gas with leftover gas
 
             InvocationStack.Push(context);
         }
@@ -116,7 +161,9 @@ namespace Neo.VM
 
         public VMState Execute()
         {
-            TotalGasConsumed = 0;
+            _maxGasConsumed = 0;
+
+            LogExecuteStartupMessage();
 
             if (State == VMState.BREAK)
                 State = VMState.NONE;
@@ -128,15 +175,19 @@ namespace Neo.VM
                 {
                     _currentContext = _invocationStack.Peek();
 
-                    if (!_currentContext.ShouldContinue())
-                        continue;
-
                     var currentInst = _currentContext.CurrentInstruction;
-                    _defaultOpCodeTable[currentInst.OpCode](this, currentInst);
 
-                    if (!IsRunning && currentInst != null)
+                    LogExecuteOpCodeMessage();
+
+                    if (_currentContext.ConsumeGas(currentInst.OpCode))
+                        _defaultOpCodeTable[currentInst.OpCode](this, currentInst);
+
+                    _maxGasConsumed += _maxGasLimit - _currentContext.GasLeft;
+
+                    if (_currentContext.ShouldContinue())
                         _currentContext.InstructionPointer += currentInst.Size;
-                    IsRunning = false;
+                    else
+                        ContextUnloaded(_currentContext);
                 }
             }
             catch (Exception ex)
@@ -145,6 +196,7 @@ namespace Neo.VM
             }
             finally
             {
+                LogExecuteSuccessfullyMessage();
                 Cleanup();
             }
 
@@ -158,6 +210,7 @@ namespace Neo.VM
         internal void OnFault(Exception ex)
         {
             State = VMState.FAULT;
+            _logger.LogError(ex, null);
         }
 
         private void Cleanup()
@@ -169,7 +222,6 @@ namespace Neo.VM
             }
 
             State = VMState.HALT;
-            IsRunning = false;
         }
     }
 }

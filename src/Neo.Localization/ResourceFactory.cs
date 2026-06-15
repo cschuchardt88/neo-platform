@@ -20,42 +20,24 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.VM;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using System;
-using System.Diagnostics.CodeAnalysis;
 
-namespace Neo.VM.Core
+namespace Neo.Localization
 {
-    public delegate void VTableFunc(VirtualMachine engine, VMInstruction instruction);
-
-    public partial class VirtualTable
+    public static class ResourceFactory
     {
-        public static readonly VirtualTable Default = new();
+        public static readonly ResourceManagerStringLocalizerFactory Instance = Create(config => config.ResourcesPath = "Resources");
 
-        public VTableFunc[] Functions { get; protected set; } = new VTableFunc[byte.MaxValue];
-
-        public VTableFunc this[OpCode opCode]
+        private static ResourceManagerStringLocalizerFactory Create(Action<LocalizationOptions> configure)
         {
-            get => Functions[(byte)opCode];
-            protected set => Functions[(byte)opCode] = value;
-        }
+            var localizedOptions = new LocalizationOptions();
 
-        public VirtualTable()
-        {
-            Array.Fill(Functions, InvalidOpcode);
+            configure?.Invoke(localizedOptions);
 
-            foreach (var mi in GetType().GetMethods())
-            {
-                if (Enum.TryParse<OpCode>(mi.Name, true, out var opCode))
-                    Functions[(byte)opCode] = mi.CreateDelegate<VTableFunc>(this);
-            }
-        }
-
-
-        [DoesNotReturn]
-        public static void InvalidOpcode(VirtualMachine engine, VMInstruction instruction)
-        {
-            throw new InvalidOperationException($"Opcode {instruction.OpCode} is undefined.");
+            return new(Options.Create(localizedOptions), NullLoggerFactory.Instance);
         }
     }
 }

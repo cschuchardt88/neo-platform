@@ -20,42 +20,19 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.VM;
-using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Neo.VM.Core
+namespace Neo.VM.Logging
 {
-    public delegate void VTableFunc(VirtualMachine engine, VMInstruction instruction);
-
-    public partial class VirtualTable
+    internal sealed class TraceExecutionLoggerOptions
     {
-        public static readonly VirtualTable Default = new();
+        public const string DefaultDateTimeFormatString = "yyyy-MM-dd HH:mm:ss.ffff";
 
-        public VTableFunc[] Functions { get; protected set; } = new VTableFunc[byte.MaxValue];
+        public bool UseUtcTimestamp { get; set; } = true;
 
-        public VTableFunc this[OpCode opCode]
-        {
-            get => Functions[(byte)opCode];
-            protected set => Functions[(byte)opCode] = value;
-        }
+        [StringSyntax(StringSyntaxAttribute.DateTimeFormat)]
+        public string TimestampFormat { get; set; } = DefaultDateTimeFormatString;
 
-        public VirtualTable()
-        {
-            Array.Fill(Functions, InvalidOpcode);
-
-            foreach (var mi in GetType().GetMethods())
-            {
-                if (Enum.TryParse<OpCode>(mi.Name, true, out var opCode))
-                    Functions[(byte)opCode] = mi.CreateDelegate<VTableFunc>(this);
-            }
-        }
-
-
-        [DoesNotReturn]
-        public static void InvalidOpcode(VirtualMachine engine, VMInstruction instruction)
-        {
-            throw new InvalidOperationException($"Opcode {instruction.OpCode} is undefined.");
-        }
+        public bool ShowExceptionStackTrace { get; set; } = true;
     }
 }
