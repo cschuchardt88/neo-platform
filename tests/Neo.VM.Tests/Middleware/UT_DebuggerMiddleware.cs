@@ -23,12 +23,47 @@
 using Microsoft.Extensions.DependencyInjection;
 using Neo.Core.VM;
 using Neo.VM.Middleware;
+using Neo.VM.Tests.TestData;
+using System.Collections.Generic;
 
 namespace Neo.VM.Tests.Middleware
 {
     [TestClass]
     public class UT_DebuggerMiddleware
     {
+        private static List<VMTestSuite> s_suite = [];
+
+        [AssemblyInitialize]
+        public static void InitTestData(TestContext testContext)
+        {
+            s_suite = VMTestLoader.LoadAllTests();
+        }
+
+        [TestMethod]
+        public void TestJsonFiles()
+        {
+            foreach (var testSuite in s_suite)
+            {
+                if (testSuite.Name.StartsWith("TRY_")) continue;
+
+                foreach (var jsonTest in testSuite.Tests)
+                {
+                    var script = OpCodeAssembler.Assemble(jsonTest.Script);
+
+                    using var scope = TestUtilities.Services.CreateScope();
+                    var vm = scope.ServiceProvider.GetRequiredService<TestEngine>();
+
+                    vm.LoadScript(script);
+
+                    var actualState = vm.Execute();
+                    var actualResultStack = vm.ResultStack;
+
+                    Assert.AreEqual(jsonTest.State, actualState, $"\nTest failed: {testSuite.Name} - {jsonTest.Name} {vm.FaultException}");
+                    Assert.HasCount(jsonTest.ResultStack.Count, actualResultStack);
+                }
+            }
+        }
+
         [TestMethod]
         public void TestBreakpoints()
         {
@@ -58,9 +93,9 @@ namespace Neo.VM.Tests.Middleware
                 Assert.AreEqual(expectedBreakLine, actualContext.InstructionPointer);
 
                 debugger.StepMode = false;
+                debugger.Continue();
             };
 
-            // Run your test script
             var actualState = vm.Execute();
             var actualResults = vm.ResultStack;
 

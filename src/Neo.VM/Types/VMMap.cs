@@ -21,6 +21,7 @@
 // SERVICES
 
 using Neo.Core.Extensions;
+using Neo.Core.VM.Type;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -156,6 +157,10 @@ namespace Neo.VM.Types
             if (_isReadOnly)
                 throw new InvalidOperationException();
 
+            if (_map.TryGetValue(key, out var value))
+                value.Release();
+
+            key.Release();
             return _map.Remove(key);
         }
 

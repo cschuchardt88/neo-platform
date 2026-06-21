@@ -21,6 +21,7 @@
 // SERVICES
 
 using Neo.Core.VM;
+using Neo.Core.VM.Type;
 using Neo.VM.Types;
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -83,7 +84,7 @@ namespace Neo.VM.Core
                 VMObjectType.Array => new VMArray(x.GetChildren()),
                 VMObjectType.Struct => new VMStruct(x.GetChildren()),
                 VMObjectType.Map => new VMMap([.. x.GetChildren()]),
-                VMObjectType.InteropInterface => new VMInteropInterface(x),
+                VMObjectType.Interop or //=> new VMInteropInterface(x),
                 _ => throw new InvalidCastException()
             };
 

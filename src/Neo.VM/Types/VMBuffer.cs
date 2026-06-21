@@ -22,6 +22,7 @@
 
 using Neo.Core;
 using Neo.Core.Extensions;
+using Neo.Core.VM.Type;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -45,6 +46,20 @@ namespace Neo.VM.Types
             ArgumentOutOfRangeException.ThrowIfNegative(size);
             _byteCount = size;
             _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+        }
+
+        public VMBuffer(ReadOnlySpan<byte> data)
+        {
+            _byteCount = data.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            data.TryCopyTo(_memoryOwner.Memory.Span);
+        }
+
+        public VMBuffer(Span<byte> data)
+        {
+            _byteCount = data.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            data.TryCopyTo(_memoryOwner.Memory.Span);
         }
 
         public VMBuffer(byte[] data)
@@ -134,7 +149,13 @@ namespace Neo.VM.Types
 
         public override BigInteger GetInteger()
         {
-            return new(_memoryOwner.Memory.Span[..VMInteger.MaxSize]);
+            var span = _memoryOwner.Memory[.._byteCount].Span;
+
+            if (span.Length > VMInteger.MaxSize)
+                throw new InvalidCastException();
+            //return new(span[..VMInteger.MaxSize]);
+
+            return new(span);
         }
 
         protected override ReadOnlySpan<byte> ComputeSpan(HashSet<VMObject> visited)

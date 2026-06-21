@@ -20,32 +20,45 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.VM.Type;
-using System.Collections.Generic;
+using Neo.Core;
+using Neo.Core.Blockchain;
+using Neo.Core.Blockchain.Interface;
+using Neo.VM.Core;
+using Neo.VM.Pipeline;
+using Neo.VM.Types;
+using System;
 
-namespace Neo.VM.Types
+namespace Neo.VM.Tests
 {
-    public class VMStruct(IEnumerable<VMObject> items) : VMArray(items)
+    internal class TestEngine(
+        Block? persistingBlock = default,
+        IVerifiable? container = default,
+        ProtocolSettings? protocolSettings = default,
+        VirtualTable? opCodeTable = default,
+        ExecutionEngineLimits? limits = default,
+        VirtualMachinePipeline? pipeline = default)
+        : VirtualMachineEngine(
+            persistingBlock,
+            container,
+            protocolSettings,
+            opCodeTable,
+            limits,
+            pipeline)
     {
-        public override VMObjectType Type => VMObjectType.Struct;
-
-        public VMStruct() : this([]) { }
-
-        protected override VMObject CloneCore(Dictionary<VMObject, VMObject> objectMap)
+        internal override void ExecuteSystemCall(uint systemCallAddress)
         {
-            if (objectMap.TryGetValue(this, out var thisItem)) return thisItem;
-
-            var clone = new VMStruct();
-
-            objectMap.Add(this, clone);
-
-            foreach (var item in this)
+            if (systemCallAddress == 0x77777777)
             {
-                var clonedItem = item.Clone(objectMap);
-                clone.Array.Add(clonedItem);
+                CurrentContext?.Push(new VMInteropInterface());
+                return;
             }
 
-            return clone;
+            if (systemCallAddress == 0xaddeadde)
+            {
+                CurrentOpCodeTable.ExecuteThrow(this, "error");
+            }
+
+            throw new Exception();
         }
     }
 }

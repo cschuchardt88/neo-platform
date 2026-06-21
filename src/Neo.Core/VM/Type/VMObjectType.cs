@@ -20,7 +20,7 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.VM.Types
+namespace Neo.Core.VM.Type
 {
     /// <summary>
     /// An enumeration representing the types in the VM.
@@ -75,6 +75,6 @@ namespace Neo.VM.Types
         /// <summary>
         /// Represents an interface used to interoperate with the outside of the the VM.
         /// </summary>
-        InteropInterface = 0x60,
+        Interop = 0x60,
     }
 }

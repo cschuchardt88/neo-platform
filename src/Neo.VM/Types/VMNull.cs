@@ -20,6 +20,7 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM.Type;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
@@ -30,10 +31,7 @@ namespace Neo.VM.Types
     {
         public override VMObjectType Type => VMObjectType.Any;
 
-        public static VMNull Instance => s_instance;
-
-
-        private static readonly VMNull s_instance = new();
+        public static VMNull Instance => new();
 
         protected override void Dispose(bool disposing)
         {

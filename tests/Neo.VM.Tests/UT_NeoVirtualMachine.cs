@@ -26,6 +26,7 @@ using Neo.Core.VM;
 using Neo.Core.VM.Attributes;
 using Neo.Core.VM.SmartContract;
 using Neo.Core.VM.Specs;
+using Neo.Core.VM.Type;
 using Neo.VM.Types;
 using System;
 using System.Numerics;
@@ -126,10 +127,10 @@ namespace Neo.VM.Tests
         public void TestCircularReferenceCreateArray()
         {
             using var sb = new ScriptBuilder()
-                .EmitPush(0)
                 .EmitCreateArray([1, 2, 3,])
                 .Emit(OpCode.DUP)
                 .Emit(OpCode.DUP)
+                .EmitPush(0)
                 .Emit(OpCode.SWAP)
                 .Emit(OpCode.SETITEM)
                 .EmitReturn();

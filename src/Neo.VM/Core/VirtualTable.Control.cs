@@ -375,7 +375,7 @@ namespace Neo.VM.Core
         {
             var x = (VMPointer)engine.CurrentContext!.Pop();
 
-            if (x.Script.Span.SequenceEqual(engine.CurrentContext!.Script.Span))
+            if (x.Script.Span.SequenceEqual(engine.CurrentContext!.Script.Span) == false)
                 throw new InvalidOperationException("Pointers can't be shared between scripts");
 
             ExecuteCall(engine, x.Position);
@@ -553,7 +553,9 @@ namespace Neo.VM.Core
         {
             var context = engine.CurrentContext!;
             var script = context.Script.Span[position..];
-            var newContext = new ExecutionContext([.. script], engine.ActiveFork, context.BlockHeight, engine.GasLeft, context.Depth + 1, context);
+            var newContext = new ExecutionContext([.. script], engine.ActiveFork, context.BlockHeight, engine.GasLeft - context.GasConsumed, context.Depth + 1, context);
+
+            context.InstructionPointer += context.CurrentInstruction.Size;
 
             engine.LoadContext(newContext);
         }
@@ -597,9 +599,11 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.</param>
         /// <param name="catchOffset">The catch block offset.</param>
         /// <param name="finallyOffset">The finally block offset.</param>
+        [DoesNotReturn]
         public virtual void ExecuteTry(VirtualMachineEngine engine, int catchOffset, int finallyOffset)
         {
             // TODO: Add this
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -610,7 +614,7 @@ namespace Neo.VM.Core
         [DoesNotReturn]
         public virtual void ExecuteThrow(VirtualMachineEngine engine, VMObject? ex)
         {
-            throw new Exception();
+            throw new Exception($"{ex}");
         }
 
         #endregion

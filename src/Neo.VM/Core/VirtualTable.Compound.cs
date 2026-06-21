@@ -21,6 +21,7 @@
 // SERVICES
 
 using Neo.Core.VM;
+using Neo.Core.VM.Type;
 using Neo.VM.Types;
 using System;
 using System.Collections.Generic;
@@ -402,8 +403,8 @@ namespace Neo.VM.Core
         /// <remarks>Pop 2, Push 0</remarks>
         public virtual void Append(VirtualMachineEngine engine, OpCodeInst instruction)
         {
-            var newItem = engine.CurrentContext!.Pop();
-            var array = (VMArray)engine.CurrentContext!.Pop();
+            var newItem = engine.CurrentContext!.Pop(false, false);
+            var array = (VMArray)engine.CurrentContext!.Pop(false, false);
 
             if (newItem is VMStruct s)
                 newItem = s.Clone();
@@ -420,12 +421,12 @@ namespace Neo.VM.Core
         /// <remarks>Pop 3, Push 0</remarks>
         public virtual void SetItem(VirtualMachineEngine engine, OpCodeInst instruction)
         {
-            var value = engine.CurrentContext!.Pop();
+            var value = engine.CurrentContext!.Pop(false, false);
             if (value is VMStruct s)
                 value = s.Clone();
 
-            var key = engine.CurrentContext!.Pop();
-            var x = engine.CurrentContext!.Pop();
+            var key = engine.CurrentContext!.Pop(false, false);
+            var x = engine.CurrentContext!.Pop(false, false);
 
             switch (x)
             {
@@ -443,7 +444,7 @@ namespace Neo.VM.Core
                     var index2 = key.GetInteger();
                     if (index2 < BigInteger.Zero || index2 >= buffer.Length)
                         throw new Exception($"The index of {nameof(Buffer)} is out of range, {index2}/[0, {buffer.Size}).");
-                    if (value is not VMBuffer p)
+                    if (value is not VMInteger p)
                         throw new InvalidOperationException($"Only primitive type values can be set in {nameof(VMBuffer)} in {instruction.OpCode}.");
                     var b = p.GetInteger();
                     if (b < sbyte.MinValue || b > byte.MaxValue)
@@ -529,7 +530,7 @@ namespace Neo.VM.Core
                     map.Clear();
                     break;
                 default:
-                    break;
+                    throw new InvalidCastException();
             }
         }
 

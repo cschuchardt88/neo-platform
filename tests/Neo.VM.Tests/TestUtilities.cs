@@ -31,6 +31,7 @@ namespace Neo.VM.Tests
     internal class TestUtilities
     {
         private static readonly ServiceProvider s_serviceProvider;
+        public static IServiceProvider Services => s_serviceProvider;
 
         public static readonly ILoggerFactory TraceLoggerFactory = LoggerFactory.Create(logging =>
         {
@@ -38,8 +39,6 @@ namespace Neo.VM.Tests
             logging.AddNeoPlatform();
             logging.SetMinimumLevel(LogLevel.Trace);
         });
-
-        public static IServiceProvider Services => s_serviceProvider;
 
         static TestUtilities()
         {
@@ -49,6 +48,7 @@ namespace Neo.VM.Tests
                 .AddEngineDebugger()
                 .AddExecuteLogger()
                 .AddExecutionEngine()
+                .AddScoped<TestEngine>()
                 .AddLogging(
                     logging =>
                     {
