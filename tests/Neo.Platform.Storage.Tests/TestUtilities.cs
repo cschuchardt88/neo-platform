@@ -21,48 +21,20 @@
 // SERVICES
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Neo.Platform.Hosting.Logging;
-using Neo.VM.Extensions;
-using System;
 
-namespace Neo.VM.Tests
+namespace Neo.Platform.Storage.Tests
 {
     internal class TestUtilities
     {
-        private static readonly ServiceProvider s_serviceProvider;
-        public static IServiceProvider Services => s_serviceProvider;
-
         public static ILoggerFactory TraceLoggerFactory => LoggerFactory.Create(logging =>
         {
             var manger = new ConfigurationManager();
             logging.AddConfiguration(manger);
             logging.ClearProviders();
-            logging.AddNeoPlatform();
+            logging.AddSimpleConsole(options => options.SingleLine = true);
+            logging.AddDebug();
             logging.SetMinimumLevel(LogLevel.Trace);
         });
-
-        static TestUtilities()
-        {
-            var services = new ServiceCollection();
-
-            services
-                .AddEngineMiddlewareDebugger()
-                .AddEngineMiddlewareLogger()
-                .AddExecutionEngine()
-                .AddScoped<TestEngine>()
-                .AddLogging(
-                    logging =>
-                    {
-                        var manger = new ConfigurationManager();
-                        logging.AddConfiguration(manger);
-                        logging.ClearProviders();
-                        logging.AddNeoPlatform(); // Custom logger for our platform (file, debugger, console, etc)
-                        logging.SetMinimumLevel(LogLevel.Trace);
-                    });
-
-            s_serviceProvider = services.BuildServiceProvider();
-        }
     }
 }

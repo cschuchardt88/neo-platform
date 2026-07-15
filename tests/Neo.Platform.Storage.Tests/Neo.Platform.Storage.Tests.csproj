@@ -8,10 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="MSTest" Version="4.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Neo.IO\Neo.IO.csproj" />
+    <ProjectReference Include="..\..\src\Neo.Platform.Storage\Neo.Platform.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>
