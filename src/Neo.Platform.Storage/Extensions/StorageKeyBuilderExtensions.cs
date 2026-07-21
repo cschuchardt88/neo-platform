@@ -20,20 +20,17 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+using Neo.Core.Extensions;
+using Neo.Core.Serialization;
 
-namespace Neo.Platform.Storage.Interface
+namespace Neo.Platform.Storage.Extensions
 {
-    public interface IReadOnlyStore : IDisposable
+    public static class StorageKeyBuilderExtensions
     {
-        bool ContainsKey(ReadOnlySpan<byte> key);
+        public static StorageKeyBuilder Append(this StorageKeyBuilder builder, INeoSerializable data) =>
+            builder.Append(data.ToArray());
 
-        byte[]? Get(ReadOnlySpan<byte> key);
-
-        bool TryGet(ReadOnlySpan<byte> key, [NotNullWhen(true)] out byte[]? value);
-
-        IEnumerable<KeyValuePair<byte[], byte[]>> Seek(ReadOnlyMemory<byte> keyOrPrefix, bool seekFromEnd = false);
+        public static StorageKeyBuilder Append(this StorageKeyBuilder builder, byte prefix, INeoSerializable data) =>
+            builder.Append(prefix).Append(data.ToArray());
     }
 }

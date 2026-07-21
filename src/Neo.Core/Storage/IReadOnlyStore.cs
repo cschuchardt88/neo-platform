@@ -20,10 +20,20 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.Platform.Storage
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+
+namespace Neo.Core.Storage
 {
-    public static class ColumnFamilyNames
+    public interface IReadOnlyStore : IDisposable
     {
-        public static readonly string Default = "default";
+        bool ContainsKey(ReadOnlySpan<byte> key);
+
+        byte[]? Get(ReadOnlySpan<byte> key);
+
+        bool TryGet(ReadOnlySpan<byte> key, [NotNullWhen(true)] out byte[]? value);
+
+        IEnumerable<KeyValuePair<byte[], byte[]>> Seek(ReadOnlyMemory<byte> keyOrPrefix, bool seekFromEnd = false);
     }
 }

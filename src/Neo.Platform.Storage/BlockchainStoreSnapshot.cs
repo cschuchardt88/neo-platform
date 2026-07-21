@@ -22,7 +22,7 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Neo.Platform.Storage.Interface;
+using Neo.Core.Storage;
 using Neo.Platform.Storage.Logging;
 using RocksDbNet;
 using System;
@@ -86,12 +86,18 @@ namespace Neo.Platform.Storage
             return false;
         }
 
+        public IStoreBackup CreateBackup() =>
+            _store.CreateBackup();
+
+        public void CreateCheckpoint(string checkpointDirectory) =>
+            _store.CreateCheckpoint(checkpointDirectory);
+
         public IStoreSnapshot CreateSnapshot()
         {
             var logLevel = LogLevel.Debug;
 
             if (_logger.IsEnabled(logLevel))
-                _logger.LogCreateSnapshotMessage(logLevel, "Creating snapshot of the snapshot.");
+                _logger.LogSnapshotMessage(logLevel, "Creating snapshot of the snapshot.");
 
             return new BlockchainStoreSnapshot(this, _db, _loggerFactory);
         }

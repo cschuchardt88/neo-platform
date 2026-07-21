@@ -20,10 +20,14 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.Platform.Storage
+using System;
+
+namespace Neo.Core.Storage
 {
-    public static class ColumnFamilyNames
+    public interface IStoreBackup : IDisposable
     {
-        public static readonly string Default = "default";
+        void Backup();
+        void Purge(uint numberOfBackupsToKeep);
+        void Restore(string restorePath, string? walPath = null);
     }
 }

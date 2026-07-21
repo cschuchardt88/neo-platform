@@ -20,6 +20,7 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using System;
 using System.Text;
 
 namespace Neo.Core
@@ -27,5 +28,23 @@ namespace Neo.Core
     public static class CoreUtilities
     {
         public static Encoding StrictUtf8Encoding => Encoding.GetEncoding("utf-8", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+
+        public static long ToUnixTimeMilliseconds(DateTime dateTime, TimeSpan offset = default) =>
+            new DateTimeOffset(dateTime, offset)
+                .ToUnixTimeMilliseconds();
+
+        public static long ToUnixTimeMilliseconds(TimeSpan timeSpan, TimeSpan offset = default) =>
+            new DateTimeOffset(timeSpan.Ticks, offset)
+                .ToUnixTimeMilliseconds();
+
+        public static DateTime FromUnixTimeMilliseconds(ulong milliseconds, bool isLocalDateTime = false) =>
+            FromUnixTimeMilliseconds((long)milliseconds, isLocalDateTime);
+
+        public static DateTime FromUnixTimeMilliseconds(long milliseconds, bool isLocalDateTime = false)
+        {
+            var dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
+
+            return isLocalDateTime ? dateTimeOffset.LocalDateTime : dateTimeOffset.UtcDateTime;
+        }
     }
 }

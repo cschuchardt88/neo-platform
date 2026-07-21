@@ -20,10 +20,15 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.Platform.Storage
+using System;
+using System.IO;
+
+namespace Neo.Configuration
 {
-    public static class ColumnFamilyNames
+    public class BlockchainBackupOptions
     {
-        public static readonly string Default = "default";
+        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+
+        public int MaxBackups { get; init; } = 3;
     }
 }

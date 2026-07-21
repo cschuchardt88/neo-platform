@@ -28,7 +28,10 @@ namespace Neo.Platform.Storage.Logging
         public const int Read = 200;
         public const int Write = 300;
         public const int Delete = 400;
-        public const int CreateSnapshot = 500;
+        public const int Snapshot = 500;
         public const int Commit = 600;
+        public const int Restore = 700;
+        public const int Backup = 800;
+        public const int Checkpoint = 900;
     }
 }
