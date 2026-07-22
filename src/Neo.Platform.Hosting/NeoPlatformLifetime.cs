@@ -55,7 +55,7 @@ namespace Neo.Platform.Hosting
                 throw new ArgumentNullException(nameof(applicationLifetime));
 
             _logger = (loggerFactory ?? NullLoggerFactory.Instance)
-                .CreateLogger("Neo.Hosting.Lifetime");
+                .CreateLogger("Neo.Platform.Hosting.Lifetime");
         }
 
         public void Dispose()

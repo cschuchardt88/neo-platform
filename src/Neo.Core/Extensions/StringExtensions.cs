@@ -71,5 +71,11 @@ namespace Neo.Core.Extensions
 
             return new(data.AsSpan(1));
         }
+
+        public static int GetSerializedSize(this string source)
+        {
+            var byteCount = CoreUtilities.StrictUtf8Encoding.GetByteCount(source);
+            return byteCount.GetCompactSize() + byteCount;
+        }
     }
 }
