@@ -20,16 +20,20 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
-using System;
-using System.IO;
+using Neo.Configuration;
 
-namespace Neo.Configuration
+namespace Neo.Platform.Hosting
 {
-    public class BlockchainBackupOptions : JsonModel
+    public static class BlockchainStoreNames
     {
-        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+        public static readonly string SectionKey = "Store";
 
-        public int MaxBackups { get; init; } = 3;
+        public static readonly string DatabasePathKey = $"{SectionKey}:{nameof(BlockchainStoreOptions.DatabasePath)}";
+        public static readonly string CreateIfMissingKey = $"{SectionKey}:{nameof(BlockchainStoreOptions.CreateIfMissing)}";
+
+        public static readonly string BackupSectionKey = $"{SectionKey}:Backup";
+
+        public static readonly string BackupPathKey = $"{BackupSectionKey}:{nameof(BlockchainBackupOptions.BackupPath)}";
+        public static readonly string MaxBackupsKey = $"{BackupSectionKey}:{nameof(BlockchainBackupOptions.MaxBackups)}";
     }
 }
