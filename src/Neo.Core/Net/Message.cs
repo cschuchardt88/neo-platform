@@ -87,7 +87,7 @@ namespace Neo.Core.Net
             writer.Write((uint)Payload.Length);
             writer.Write(ComputeChecksum(Payload));
             if (Payload.Length > 0)
-                writer.Write(Payload);
+                writer.Write(Payload.AsSpan());
         }
 
         /// <inheritdoc/>
@@ -112,7 +112,7 @@ namespace Neo.Core.Net
         /// <summary>
         /// Computes a simple checksum for the payload using SHA-256 truncated to 4 bytes.
         /// </summary>
-        private static uint ComputeChecksum(ReadOnlySpan<byte> data)
+        public static uint ComputeChecksum(ReadOnlySpan<byte> data)
         {
             Span<byte> hash = stackalloc byte[32];
             SHA256.HashData(data, hash);
