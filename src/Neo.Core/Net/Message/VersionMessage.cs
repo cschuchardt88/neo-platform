@@ -44,7 +44,7 @@ namespace Neo.Core.Net.Message
 
         public uint Nonce { get; private set; } = RandomNumberFactory.NextUInt32();
 
-        public bool AllowCompression { get; private set; }
+        public bool AllowCompression => !Capabilities.Any(static a => a.Type == NodeCapabilityType.DisableCompression);
 
         public string UserAgent { get; private set; } = $"/RapidLoop:{s_version}/";
 
@@ -57,6 +57,21 @@ namespace Neo.Core.Net.Message
             sizeof(uint) + // Nonce
             UserAgent.GetSerializedSize() +   // UserAgent
             Capabilities.GetSerializedSize(); // Node Capabilities
+
+        public static VersionMessage Create(uint network, params NodeCapabilityMessage[] capabilities) =>
+            new()
+            {
+                Network = network,
+                Capabilities = capabilities,
+            };
+
+        public static VersionMessage Create(uint network, uint nonce, params NodeCapabilityMessage[] capabilities) =>
+            new()
+            {
+                Network = network,
+                Nonce = nonce,
+                Capabilities = capabilities,
+            };
 
         public void Deserialize(Stream reader)
         {
@@ -72,9 +87,6 @@ namespace Neo.Core.Net.Message
 
             if (Capabilities.Distinct().Count() != Capabilities.Length)
                 throw new FormatException("Duplicate node capabilities.");
-
-            AllowCompression = Capabilities.Any(static a =>
-                a.Type == NodeCapabilityType.DisableCompression);
         }
 
         public void Serialize(Stream writer)

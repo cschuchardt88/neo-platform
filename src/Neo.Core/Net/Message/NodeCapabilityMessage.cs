@@ -31,7 +31,8 @@ namespace Neo.Core.Net.Message
     {
         public abstract NodeCapabilityType Type { get; }
 
-        public abstract int Size { get; }
+        public virtual int Size =>
+            sizeof(NodeCapabilityType);
 
         public static NodeCapabilityMessage DeserializeFrom(Stream reader)
         {
@@ -49,8 +50,17 @@ namespace Neo.Core.Net.Message
             return capability;
         }
 
-        public abstract void Deserialize(Stream reader);
+        public virtual void Deserialize(Stream reader)
+        {
+            var type = reader.Read<NodeCapabilityType>();
 
-        public abstract void Serialize(Stream writer);
+            if (type != Type)
+                throw new FormatException($"Invalid capability type: {type}");
+        }
+
+        public virtual void Serialize(Stream writer)
+        {
+            writer.Write(Type);
+        }
     }
 }

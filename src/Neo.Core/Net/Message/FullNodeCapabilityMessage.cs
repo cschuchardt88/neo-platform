@@ -21,7 +21,6 @@
 // SERVICES
 
 using Neo.Core.Extensions;
-using System;
 using System.IO;
 
 namespace Neo.Core.Net.Message
@@ -33,22 +32,20 @@ namespace Neo.Core.Net.Message
         public uint StartHeight { get; private set; }
 
         public override int Size =>
-            sizeof(NodeCapabilityType) +
+            base.Size +
             sizeof(uint); // StartHeight
 
         public override void Deserialize(Stream reader)
         {
-            var type = reader.Read<NodeCapabilityType>();
-
-            if (type != NodeCapabilityType.FullNode)
-                throw new FormatException($"Invalid capability type: {type}");
+            base.Deserialize(reader);
 
             StartHeight = reader.Read<uint>();
         }
 
         public override void Serialize(Stream writer)
         {
-            writer.Write(Type);
+            base.Serialize(writer);
+
             writer.Write(StartHeight);
         }
     }

@@ -37,6 +37,26 @@ namespace Neo.Core.Tests.Net.Message
         }
 
         [TestMethod]
+        public void TestCreate()
+        {
+            var expectedVersionMessage = new VersionMessage();
+
+            var actualVersionMessage = VersionMessage.Create(
+                expectedVersionMessage.Network,
+                expectedVersionMessage.Nonce,
+                expectedVersionMessage.Capabilities);
+
+            Assert.AreEqual(expectedVersionMessage.Network, actualVersionMessage.Network);
+            Assert.AreEqual(expectedVersionMessage.Version, actualVersionMessage.Version);
+            Assert.AreEqual(expectedVersionMessage.Timestamp, actualVersionMessage.Timestamp);
+            Assert.AreEqual(expectedVersionMessage.Nonce, actualVersionMessage.Nonce);
+            Assert.AreEqual(expectedVersionMessage.AllowCompression, actualVersionMessage.AllowCompression);
+            Assert.AreEqual(expectedVersionMessage.UserAgent, actualVersionMessage.UserAgent);
+            Assert.AreSequenceEqual(expectedVersionMessage.Capabilities, actualVersionMessage.Capabilities);
+
+        }
+
+        [TestMethod]
         public void TestSerializeAndDeserialize()
         {
             var expectedVersionMessage = new VersionMessage();

@@ -31,15 +31,12 @@ namespace Neo.Core.Net.Message
         public override NodeCapabilityType Type => NodeCapabilityType.ArchivalNode;
 
         public override int Size =>
-            sizeof(NodeCapabilityType) +
+            base.Size +
             1;
 
         public override void Deserialize(Stream reader)
         {
-            var type = reader.Read<NodeCapabilityType>();
-
-            if (type != NodeCapabilityType.ArchivalNode)
-                throw new FormatException($"Invalid capability type: {type}");
+            base.Deserialize(reader);
 
             if (reader.ReadByte() != 0)
                 throw new FormatException("Invalid capability data");
@@ -47,7 +44,8 @@ namespace Neo.Core.Net.Message
 
         public override void Serialize(Stream writer)
         {
-            writer.Write(Type);
+            base.Serialize(writer);
+
             writer.Write((byte)0);
         }
     }
