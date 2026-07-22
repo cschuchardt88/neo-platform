@@ -107,6 +107,5 @@ namespace Neo.Core.Extensions
                 (hash, b) =>
                         unchecked((hash * 31) ^ b)
                 );
-
     }
 }

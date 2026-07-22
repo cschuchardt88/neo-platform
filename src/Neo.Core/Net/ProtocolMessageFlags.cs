@@ -20,28 +20,21 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.Net;
+using System;
 
-namespace Neo.Core.Blockchain
+namespace Neo.Core.Net
 {
-    /// <summary>
-    /// Represents the type of an inventory.
-    /// </summary>
-    public enum InventoryType : byte
+    [Flags]
+    public enum ProtocolMessageFlags : byte
     {
         /// <summary>
-        /// Indicates that the inventory is a transaction.
+        /// No flag is set for the message.
         /// </summary>
-        TX = ProtocolMessageCommand.Transaction,
+        None = 0,
 
         /// <summary>
-        /// Indicates that the inventory is a block.
+        /// Indicates that the message is compressed.
         /// </summary>
-        Block = ProtocolMessageCommand.Block,
-
-        /// <summary>
-        /// Indicates that the inventory is an extensible payload.
-        /// </summary>
-        Extensible = ProtocolMessageCommand.Extensible
+        Compressed = 1 << 0
     }
 }
