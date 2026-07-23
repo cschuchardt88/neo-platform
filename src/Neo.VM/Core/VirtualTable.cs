@@ -20,12 +20,13 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM;
 using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.VM.Core
 {
-    public delegate void VTableFunc(NeoVirtualMachine engine, VMInstruction instruction);
+    public delegate void VTableFunc(VirtualMachineEngine engine, OpCodeInst instruction);
 
     public partial class VirtualTable
     {
@@ -52,7 +53,7 @@ namespace Neo.VM.Core
 
 
         [DoesNotReturn]
-        public static void InvalidOpcode(NeoVirtualMachine engine, VMInstruction instruction)
+        public static void InvalidOpcode(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             throw new InvalidOperationException($"Opcode {instruction.OpCode} is undefined.");
         }

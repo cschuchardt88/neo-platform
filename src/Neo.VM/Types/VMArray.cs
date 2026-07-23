@@ -20,28 +20,29 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.Extensions;
+using Neo.Core.VM.Type;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMArray : VMObject, IEnumerable<VMObject>, IEnumerable, ICollection<VMObject>, IReadOnlyCollection<VMObject>, IList<VMObject>, IReadOnlyList<VMObject>
+    public class VMArray : VMObject, IEquatable<VMArray>, IEnumerable<VMObject>, IEnumerable, ICollection<VMObject>, IReadOnlyCollection<VMObject>, IList<VMObject>, IReadOnlyList<VMObject>
     {
         public override VMObjectType Type => VMObjectType.Array;
 
-        public int Count => _array.Count;
+        public int Count => Array.Count;
 
         public bool IsReadOnly => _isReadOnly;
 
         private bool _isReadOnly = false;
 
-        protected readonly List<VMObject> _array = [];
+        protected readonly List<VMObject> Array;
 
-        public VMArray() { }
+        public VMArray() : this(false) { }
 
         public VMArray(bool isReadonly) : this([], isReadonly) { }
 
@@ -49,25 +50,17 @@ namespace Neo.VM.Types
 
         public VMArray(IEnumerable<VMObject> items, bool isReadonly)
         {
-            foreach (var item in items)
-            {
-                item.AddReference();
-                _array.Add(item);
-            }
-
+            Array = [.. items];
             _isReadOnly = isReadonly;
         }
 
         public VMObject this[int index]
         {
-            get => _array[index];
+            get => Array[index];
             set
             {
                 if (_isReadOnly) throw new InvalidOperationException();
-
-                _array[index]?.Release();
-                value.AddReference();
-                _array[index] = value;
+                Array[index] = value;
             }
         }
 
@@ -82,18 +75,27 @@ namespace Neo.VM.Types
 
         public override int GetHashCode()
         {
-            return _array.Aggregate(RefCount,
-                (hash, b) =>
-                    (hash * 31) ^ b.GetHashCode());
+            return AsSpan().ToHashCode(RefCount ^ 397);
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
-            if (obj is VMArray other && other.Count == Count)
+            if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return false;
+            return Equals(obj as VMArray);
+        }
+
+        public bool Equals(VMArray? other)
+        {
+            if (ReferenceEquals(other, this)) return true;
+            if (other is null) return false;
+            if (RefCount != other.RefCount) return false;
+
+            if (other.Count == Count)
             {
                 for (var i = 0; i < Count; i++)
                 {
-                    if (!Equals(this[i], other[i]))
+                    if (this[i].Equals(other[i]) == false)
                         return false;
                 }
 
@@ -106,7 +108,7 @@ namespace Neo.VM.Types
         #region IEnumerable
 
         public IEnumerator<VMObject> GetEnumerator() =>
-            _array.GetEnumerator();
+            Array.GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() =>
             GetEnumerator();
@@ -118,22 +120,18 @@ namespace Neo.VM.Types
         public void Add(VMObject item)
         {
             if (_isReadOnly) throw new InvalidOperationException();
-
-            item.AddReference();
-            _array.Add(item);
+            Array.Add(item);
         }
 
         public void Clear()
         {
             if (_isReadOnly) throw new InvalidOperationException();
-
-            _array.ForEach(i => i.Release());
-            _array.Clear();
+            Array.Clear();
         }
 
         public bool Contains(VMObject item)
         {
-            return _array.Contains(item);
+            return Array.Contains(item);
         }
 
         public void CopyTo(VMObject[] array, int arrayIndex)
@@ -141,15 +139,13 @@ namespace Neo.VM.Types
             ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex, nameof(arrayIndex));
             ArgumentOutOfRangeException.ThrowIfGreaterThan(arrayIndex, array.Length - Count, nameof(arrayIndex));
 
-            _array.CopyTo(array, arrayIndex);
+            Array.CopyTo(array, arrayIndex);
         }
 
         public bool Remove(VMObject item)
         {
             if (_isReadOnly) throw new InvalidOperationException();
-
-            _array[_array.IndexOf(item)]?.Release();
-            return _array.Remove(item);
+            return Array.Remove(item);
         }
 
         #endregion
@@ -158,35 +154,31 @@ namespace Neo.VM.Types
 
         public int IndexOf(VMObject item)
         {
-            return _array.IndexOf(item);
+            return Array.IndexOf(item);
         }
 
         public void Insert(int index, VMObject item)
         {
             if (_isReadOnly) throw new InvalidOperationException();
-
-            item.AddReference();
-            _array.Insert(index, item);
+            Array.Insert(index, item);
         }
 
         public void RemoveAt(int index)
         {
             if (_isReadOnly) throw new InvalidOperationException();
-
-            _array[index]?.Release();
-            _array.RemoveAt(index);
+            Array.RemoveAt(index);
         }
 
         #endregion
 
         internal override IEnumerable<VMObject> GetChildren() =>
-            [.. _array];
+            [.. Array];
 
         public void Reverse()
         {
             if (_isReadOnly) throw new InvalidOperationException();
 
-            _array.Reverse();
+            Array.Reverse();
         }
 
         internal void SetAsReadOnly() =>
@@ -194,43 +186,33 @@ namespace Neo.VM.Types
 
         public override VMObject Clone()
         {
+            var objectMap = new Dictionary<VMObject, VMObject>(ReferenceEqualityComparer.Instance);
+            return Clone(objectMap);
+        }
+
+        protected override VMObject CloneCore(Dictionary<VMObject, VMObject> objectMap)
+        {
+            if (objectMap.TryGetValue(this, out var thisItem)) return thisItem;
+
             var clone = new VMArray();
 
-            // Important: Use a mapping to handle cycles during cloning
-            var objectMap = new Dictionary<VMObject, VMObject>();
+            objectMap.Add(this, clone);
 
-            _array.ForEach(i =>
+            foreach (var item in this)
             {
-                if (i is null || i is VMNull)
-                {
-                    clone._array.Add(VMNull.Instance);
-                    return;
-                }
-
-                if (objectMap.TryGetValue(i, out var alreadyCloned))
-                {
-                    // Cycle detected during cloning - reuse the cloned object
-                    alreadyCloned.AddReference();
-                    clone._array.Add(alreadyCloned);
-                }
-                else
-                {
-                    var clonedItem = i.Clone();
-                    objectMap[i] = clonedItem;
-                    clone._array.Add(clonedItem);
-                }
-            });
+                var clonedItem = item.Clone(objectMap);
+                clone.Array.Add(clonedItem);
+            }
 
             if (_isReadOnly)
                 clone.SetAsReadOnly();
 
-            clone.AddReference();
             return clone;
         }
 
         public override bool GetBoolean()
         {
-            return _array.Count > 0;
+            return Array.Count > 0;
         }
 
         [DoesNotReturn]
@@ -239,11 +221,15 @@ namespace Neo.VM.Types
             throw new InvalidOperationException();
         }
 
-        public override ReadOnlySpan<byte> GetReadOnlySpan()
+        protected override ReadOnlySpan<byte> ComputeSpan(HashSet<VMObject> visited)
         {
             var result = new List<byte>();
 
-            _array.ForEach(i => result.AddRange(i.GetReadOnlySpan()));
+            foreach (var item in Array)
+            {
+                if (item is not VMNull)
+                    result.AddRange(item.GetSafeSpan(visited));
+            }
 
             return result.ToArray();
         }

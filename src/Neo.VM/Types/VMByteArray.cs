@@ -21,90 +21,109 @@
 // SERVICES
 
 using Neo.Core;
+using Neo.Core.Extensions;
+using Neo.Core.VM.Type;
 using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMByteArray : VMObject
+    public class VMByteArray : VMObject, IEquatable<VMByteArray>
     {
         public override VMObjectType Type => VMObjectType.ByteString;
 
-        public int Length => _memory.Length;
+        public int Length => _byteCount;
 
-        private Memory<byte> _memory;
+        private readonly IMemoryOwner<byte> _memoryOwner;
+        private readonly int _byteCount;
 
         public VMByteArray(byte[] data)
         {
-            _memory = data;
+            _byteCount = data.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            data.AsMemory().TryCopyTo(_memoryOwner.Memory);
         }
 
         public VMByteArray(Memory<byte> data)
         {
-            _memory = data;
+            _byteCount = data.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            data.TryCopyTo(_memoryOwner.Memory);
+        }
+
+        public VMByteArray(ReadOnlySpan<byte> data)
+        {
+            _byteCount = data.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            data.TryCopyTo(_memoryOwner.Memory.Span);
         }
 
         public VMByteArray(Span<byte> data)
         {
-            _memory = GC.AllocateUninitializedArray<byte>(data.Length, false);
-            data.TryCopyTo(_memory.Span);
+            _byteCount = data.Length;
+            _memoryOwner = MemoryPool<byte>.Shared.Rent(_byteCount);
+            data.TryCopyTo(_memoryOwner.Memory.Span);
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
-            if (obj is VMByteArray other && other.Length == Length)
-                return _memory.Span.SequenceEqual(other._memory.Span);
-
-            return false;
+            if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return false;
+            return Equals(obj as VMByteArray);
         }
 
         public override int GetHashCode()
         {
-            return _memory.ToArray().Aggregate(RefCount,
-                (hash, b) =>
-                    (hash * 31) ^ b);
+            return _memoryOwner.Memory[.._byteCount]
+                .ToHashCode(RefCount ^ 397);
         }
 
         protected override void Dispose(bool disposing)
         {
-            _memory = null;
+            _memoryOwner.Dispose();
             base.Dispose(disposing);
         }
 
         public override string ToString()
         {
-            foreach (var v in _memory.Span)
+            foreach (var v in _memoryOwner.Memory[.._byteCount].Span)
             {
-                if (char.IsAsciiLetterOrDigit((char)v)) continue;
-                return Convert.ToBase64String(_memory.Span);
+                if (char.IsAscii((char)v)) continue;
+                return Convert.ToBase64String(_memoryOwner.Memory[.._byteCount].Span);
             }
 
-            return CoreUilities.StrictUtf8Encoding.GetString(_memory.Span);
+            return CoreUtilities.StrictUtf8Encoding.GetString(_memoryOwner.Memory[.._byteCount].Span);
         }
 
         public override VMObject Clone()
         {
-            var clone = new VMByteArray(_memory.ToArray());
-
-            clone.AddReference();
+            var clone = new VMByteArray(_memoryOwner.Memory[.._byteCount].ToArray());
 
             return clone;
         }
 
         public override bool GetBoolean()
         {
-            return !_memory.IsEmpty;
+            return !_memoryOwner.Memory[.._byteCount].IsEmpty;
         }
 
         public override BigInteger GetInteger()
         {
-            return new(_memory.Span[..VMInteger.MaxSize]);
+            var span = _memoryOwner.Memory[.._byteCount].Span;
+
+            if (span.Length > VMInteger.MaxSize)
+                return new(span[..VMInteger.MaxSize]);
+
+            return new(span);
         }
 
-        public override ReadOnlySpan<byte> GetReadOnlySpan()
+        protected override ReadOnlySpan<byte> ComputeSpan(HashSet<VMObject> visited)
         {
-            return _memory.Span;
+            return _memoryOwner.Memory[.._byteCount].Span;
         }
 
         /// <summary>
@@ -112,12 +131,24 @@ namespace Neo.VM.Types
         /// </summary>
         public byte this[int index]
         {
-            get => _memory.Span[index];
+            get => _memoryOwner.Memory[.._byteCount].Span[index];
+            set => _memoryOwner.Memory[.._byteCount].Span[index] = value;
         }
 
         public string ToHexString()
         {
-            return Convert.ToHexStringLower(_memory.Span);
+            return Convert.ToHexStringLower(_memoryOwner.Memory[.._byteCount].Span);
+        }
+
+        public bool Equals([NotNullWhen(true)] VMByteArray? other)
+        {
+            if (ReferenceEquals(other, this)) return true;
+            if (other is null) return false;
+            if (RefCount != other.RefCount) return false;
+            if (Length != other.Length) return false;
+            return _memoryOwner.Memory[.._byteCount]
+                .Span
+                .SequenceEqual(other._memoryOwner.Memory[..other._byteCount].Span);
         }
 
         /// <summary>
@@ -125,7 +156,12 @@ namespace Neo.VM.Types
         /// </summary>
         public static VMByteArray operator +(VMByteArray a, VMByteArray b)
         {
-            return new VMByteArray([.. a._memory.Span, .. b._memory.Span]);
+            return new(
+                [
+                    .. a._memoryOwner.Memory[..a._byteCount].Span,
+                    .. b._memoryOwner.Memory[..b._byteCount].Span
+                ]
+            );
         }
 
         /// <summary>
@@ -133,9 +169,7 @@ namespace Neo.VM.Types
         /// </summary>
         public static bool operator ==(VMByteArray a, VMByteArray b)
         {
-            if (ReferenceEquals(a, b)) return true;
-            if (a is null || b is null) return false;
-            return a._memory.Span.SequenceEqual(b._memory.Span);
+            return a.Equals(b);
         }
 
         public static bool operator !=(VMByteArray a, VMByteArray b) =>

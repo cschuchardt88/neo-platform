@@ -20,6 +20,8 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.Extensions;
+using Neo.Core.VM.Type;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,7 +31,7 @@ using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMMap : VMObject, IDictionary<VMObject, VMObject>, IReadOnlyDictionary<VMObject, VMObject>
+    public class VMMap : VMObject, IEquatable<VMMap>, IDictionary<VMObject, VMObject>, IReadOnlyDictionary<VMObject, VMObject>
     {
         public const int MaxKeySize = 64;
 
@@ -78,7 +80,7 @@ namespace Neo.VM.Types
 
         public VMMap(IList<VMObject> items, bool isReadOnly = false)
         {
-            for (var i = 0; i < items.Count / 2; i += 2)
+            for (var i = 0; i < items.Count - 2; i += 2)
                 Add(new(items[i], items[i + 1]));
 
             _isReadOnly = isReadOnly;
@@ -93,16 +95,20 @@ namespace Neo.VM.Types
             base.Dispose(disposing);
         }
 
-        public override bool Equals(object? obj)
+        public bool Equals(VMMap? other)
         {
-            if (obj is VMMap other && other.Count == Count)
+            if (ReferenceEquals(other, this)) return true;
+            if (other is null) return false;
+            if (RefCount != other.RefCount) return false;
+
+            if (other.Count == Count)
             {
                 var children = GetChildren().ToArray();
                 var otherChildren = other.GetChildren().ToArray();
 
                 for (var i = 0; i < Count; i++)
                 {
-                    if (!Equals(children[i], otherChildren[i]))
+                    if (children[i].Equals(otherChildren[i]) == false)
                         return false;
                 }
 
@@ -112,11 +118,16 @@ namespace Neo.VM.Types
             return false;
         }
 
+        public override bool Equals([NotNullWhen(true)] object? obj)
+        {
+            if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return false;
+            return Equals(obj as VMMap);
+        }
+
         public override int GetHashCode()
         {
-            return _map.ToArray().Aggregate(RefCount,
-                (hash, b) =>
-                    (hash * 31) + (b.Key.GetHashCode() ^ b.Value.GetHashCode()));
+            return AsSpan().ToHashCode(RefCount * 397);
         }
 
         public void Add(VMObject key, VMObject value)
@@ -127,10 +138,6 @@ namespace Neo.VM.Types
             if (_isReadOnly)
                 throw new InvalidOperationException();
 
-            if (_map.TryGetValue(key, out var oldValue))
-                oldValue?.Release();
-
-            value.AddReference();
             _map[key] = value;
         }
 
@@ -150,14 +157,11 @@ namespace Neo.VM.Types
             if (_isReadOnly)
                 throw new InvalidOperationException();
 
-            var result = _map.TryGetValue(key, out var oldValue);
+            if (_map.TryGetValue(key, out var value))
+                value.Release();
 
-            if (result)
-                oldValue?.Release();
-
-            _map.Remove(key);
-
-            return result;
+            key.Release();
+            return _map.Remove(key);
         }
 
         public bool TryGetValue(VMObject key, [MaybeNullWhen(false)] out VMObject value)
@@ -177,19 +181,13 @@ namespace Neo.VM.Types
         {
             if (_isReadOnly)
                 throw new InvalidOperationException();
-
-            foreach (var kvp in _map)
-            {
-                kvp.Key?.Release();
-                kvp.Value?.Release();
-            }
             _map.Clear();
         }
 
         public bool Contains(KeyValuePair<VMObject, VMObject> item)
         {
             if (item.Key.Size > MaxKeySize)
-                throw new ArgumentException($"Key size {item.Key.Size} bytes exceeds maximum allowed size of {MaxKeySize} bytes.", nameof(item.Key));
+                throw new ArgumentException($"Key size {item.Key.Size} bytes exceeds maximum allowed size of {MaxKeySize} bytes.", nameof(item));
 
             return ContainsKey(item.Key) && _map.Values.Any(a => a == item.Value);
         }
@@ -205,7 +203,7 @@ namespace Neo.VM.Types
         public bool Remove(KeyValuePair<VMObject, VMObject> item)
         {
             if (item.Key.Size > MaxKeySize)
-                throw new ArgumentException($"Key size {item.Key.Size} bytes exceeds maximum allowed size of {MaxKeySize} bytes.", nameof(item.Key));
+                throw new ArgumentException($"Key size {item.Key.Size} bytes exceeds maximum allowed size of {MaxKeySize} bytes.", nameof(item));
 
             return Remove(item.Key);
         }
@@ -230,58 +228,35 @@ namespace Neo.VM.Types
 
         public override VMObject Clone()
         {
+            var objectMap = new Dictionary<VMObject, VMObject>(ReferenceEqualityComparer.Instance);
+            return Clone(objectMap);
+        }
+
+        protected override VMObject CloneCore(Dictionary<VMObject, VMObject> objectMap)
+        {
+            if (objectMap.TryGetValue(this, out var thisItem)) return thisItem;
+
             var clone = new VMMap();
 
-            // Important: Use a mapping to handle cycles during cloning
-            var objectMap = new Dictionary<VMObject, VMObject>();
+            objectMap.Add(this, clone);
 
-            foreach (var kvp in _map)
-            {
-                if (kvp.Key is null || kvp.Key is VMNull)
-                    continue;
-
-                VMObject clonedKey;
-                VMObject clonedValue;
-
-                // Clone key
-                if (objectMap.TryGetValue(kvp.Key, out var existingKeyClone))
-                    clonedKey = existingKeyClone;
-                else
-                {
-                    clonedKey = kvp.Key.Clone();
-                    objectMap[kvp.Key] = clonedKey;
-                }
-
-                // Clone value
-                if (kvp.Value is null || kvp.Value is VMNull)
-                    clonedValue = VMNull.Instance;
-                else if (objectMap.TryGetValue(kvp.Value, out var existingValueClone))
-                    clonedValue = existingValueClone;
-                else
-                {
-                    clonedValue = kvp.Value.Clone();
-                    objectMap[kvp.Value] = clonedValue;
-                }
-
-                clone._map[clonedKey] = clonedValue;
-            }
+            foreach (var (key, value) in _map)
+                clone[key] = value.Clone(objectMap);
 
             if (_isReadOnly)
                 clone.SetAsReadOnly();
 
-            clone.AddReference();
-
             return clone;
         }
 
-        public override ReadOnlySpan<byte> GetReadOnlySpan()
+        protected override ReadOnlySpan<byte> ComputeSpan(HashSet<VMObject> visited)
         {
             var result = new List<byte>();
 
-            foreach (var kvp in _map)
+            foreach (var (key, value) in _map)
             {
-                result.AddRange(kvp.Key.GetReadOnlySpan());
-                result.AddRange(kvp.Value.GetReadOnlySpan());
+                result.AddRange(key.GetSafeSpan(visited));
+                result.AddRange(value.GetSafeSpan(visited));
             }
 
             return result.ToArray();

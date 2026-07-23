@@ -20,6 +20,8 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM;
+using Neo.Core.VM.Type;
 using Neo.VM.Types;
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -35,7 +37,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 1, Push 1</remarks>
-        public virtual void IsNull(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void IsNull(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var x = engine.CurrentContext!.Pop();
 
@@ -49,7 +51,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 1, Push 1</remarks>
-        public virtual void IsType(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void IsType(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var x = engine.CurrentContext!.Pop();
             var type = instruction.AsToken<VMObjectType>();
@@ -67,7 +69,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 1, Push 1</remarks>
-        public virtual void Convert(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void Convert(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var x = engine.CurrentContext!.Pop();
 
@@ -77,12 +79,12 @@ namespace Neo.VM.Core
                 VMObjectType.Pointer => new VMPointer(engine.CurrentContext!.Script, unchecked((int)x.GetInteger())),
                 VMObjectType.Boolean => x.GetBoolean(),
                 VMObjectType.Integer => x.GetInteger(),
-                VMObjectType.ByteString => new VMByteArray([.. x.GetReadOnlySpan()]),
-                VMObjectType.Buffer => new VMBuffer([.. x.GetReadOnlySpan()]),
+                VMObjectType.ByteString => new VMByteArray([.. x.AsSpan()]),
+                VMObjectType.Buffer => new VMBuffer([.. x.AsSpan()]),
                 VMObjectType.Array => new VMArray(x.GetChildren()),
                 VMObjectType.Struct => new VMStruct(x.GetChildren()),
                 VMObjectType.Map => new VMMap([.. x.GetChildren()]),
-                VMObjectType.InteropInterface => new VMInteropInterface(x),
+                VMObjectType.Interop or //=> new VMInteropInterface(x),
                 _ => throw new InvalidCastException()
             };
 
@@ -97,7 +99,7 @@ namespace Neo.VM.Core
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 1, Push 0</remarks>
         [DoesNotReturn]
-        public virtual void AbortMsg(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void AbortMsg(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var msg = engine.CurrentContext!.Pop().ToString();
 
@@ -111,7 +113,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 2, Push 0</remarks>
-        public virtual void AssertMsg(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void AssertMsg(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var msg = engine.CurrentContext!.Pop().ToString();
             var x = engine.CurrentContext!.Pop().GetBoolean();

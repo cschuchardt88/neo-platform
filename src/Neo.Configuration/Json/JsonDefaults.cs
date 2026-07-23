@@ -40,6 +40,7 @@ namespace Neo.Configuration.Json
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
             WriteIndented = true,
             RespectNullableAnnotations = true,
+            PropertyNameCaseInsensitive = true,
             Converters =
             {
                 // TODO: Add more defaults for NEP-6
@@ -47,6 +48,7 @@ namespace Neo.Configuration.Json
                 new JsonStringEnumConverter(),
                 new JsonStringECPointConverter(),
                 new JsonStringUInt160Converter(),
+                new JsonIPEndPointConverter(),
             },
         };
     }

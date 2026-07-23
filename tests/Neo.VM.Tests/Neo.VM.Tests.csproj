@@ -7,10 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MSTest" Version="4.0.2" />
+    <None Remove="TestData\VMTests.zip" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="TestData\VMTests.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" Version="4.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Neo.Platform.Hosting\Neo.Platform.Hosting.csproj" />
     <ProjectReference Include="..\..\src\Neo.VM\Neo.VM.csproj" />
   </ItemGroup>
 

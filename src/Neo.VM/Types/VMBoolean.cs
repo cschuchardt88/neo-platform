@@ -20,12 +20,15 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM.Type;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMBoolean : VMObject
+    public class VMBoolean : VMObject, IEquatable<VMBoolean>
     {
         public override VMObjectType Type => VMObjectType.Boolean;
 
@@ -36,12 +39,28 @@ namespace Neo.VM.Types
             _value = value;
         }
 
+        public bool Equals(VMBoolean? other)
+        {
+            if (ReferenceEquals(other, this)) return true;
+            if (other is null) return false;
+            if (RefCount != other.RefCount) return false;
+            return _value == other._value;
+        }
+
+        public override bool Equals([NotNullWhen(true)] object? obj)
+        {
+            if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return false;
+            return Equals(obj as VMBoolean);
+        }
+
         public override int GetHashCode()
         {
             return _value ? 1 : 0;
         }
 
-        public override string ToString()
+        [return: MaybeNull]
+        public override string? ToString()
         {
             return _value.ToString();
         }
@@ -49,8 +68,6 @@ namespace Neo.VM.Types
         public override VMObject Clone()
         {
             var clone = new VMBoolean(_value);
-
-            clone.AddReference();
 
             return clone;
         }
@@ -65,7 +82,7 @@ namespace Neo.VM.Types
             return _value ? BigInteger.One : BigInteger.Zero;
         }
 
-        public override ReadOnlySpan<byte> GetReadOnlySpan()
+        protected override ReadOnlySpan<byte> ComputeSpan(HashSet<VMObject> visited)
         {
             return _value ? [1] : [0];
         }

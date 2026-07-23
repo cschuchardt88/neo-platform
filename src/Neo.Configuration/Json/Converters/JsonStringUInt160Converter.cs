@@ -20,14 +20,14 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Cryptography;
+using Neo.Core;
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Neo.Configuration.Json.Converters
 {
-    internal class JsonStringUInt160Converter : JsonConverter<UInt160?>
+    public class JsonStringUInt160Converter : JsonConverter<UInt160?>
     {
         public override UInt160? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {

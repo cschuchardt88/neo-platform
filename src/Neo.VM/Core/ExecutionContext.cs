@@ -20,10 +20,11 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM;
+using Neo.Core.VM.Specs;
 using Neo.VM.Types;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
 
 namespace Neo.VM.Core
 {
@@ -40,14 +41,14 @@ namespace Neo.VM.Core
         public int InstructionPointer { get; internal set; }
 
         /// <summary>
-        /// Returns the current <see cref="VMInstruction"/>.
+        /// Returns the current <see cref="OpCodeInst"/>.
         /// </summary>
-        public VMInstruction CurrentInstruction => new(_script, InstructionPointer);
+        public OpCodeInst CurrentInstruction => new(_script[InstructionPointer..]);
 
         /// <summary>
-        /// Returns the next <see cref="VMInstruction"/>.
+        /// Returns the next <see cref="OpCodeInst"/>.
         /// </summary>
-        public VMInstruction NextInstruction => new(_script, InstructionPointer + CurrentInstruction.Size);
+        public OpCodeInst NextInstruction => new(_script[(InstructionPointer + CurrentInstruction.Size)..]);
 
         /// <summary>
         /// Current stack frame
@@ -57,37 +58,55 @@ namespace Neo.VM.Core
         /// <summary>
         /// Gas remaining for this execution
         /// </summary>
-        public BigInteger Gas { get; set; }
+        public long GasConsumed => _maxGasConsumed;
 
         /// <summary>
         /// Whether this context is currently executing
         /// </summary>
-        public bool IsExecuting { get; set; } = true;
+        public bool IsExecuting { get; internal set; } = true;
 
         /// <summary>
         /// Parent context (for nested calls)
         /// </summary>
-        public ExecutionContext? Parent { get; set; }
+        public ExecutionContext? Parent => _parentContext;
 
         /// <summary>
         /// Custom state / context data (e.g., contract storage, runtime)
         /// </summary>
         public Dictionary<Type, object> State { get; } = [];
 
+        public HardFork HardFork => _fork;
+
+        public uint BlockHeight => _blockHeight;
+
         /// <summary>
         /// Invocation stack depth
         /// </summary>
-        public int Depth { get; }
+        public int Depth => _contextDepth;
 
         private readonly ReadOnlyMemory<byte> _script;
+        private readonly HardFork _fork;
+        private readonly uint _blockHeight;
 
-        public ExecutionContext(byte[] script, long initialGas = 1_000000L, int depth = 0, ExecutionContext? parent = null)
+        private readonly ExecutionContext? _parentContext;
+        private readonly int _contextDepth;
+
+        private long _initialGasLeft;
+        private long _maxGasConsumed;
+
+        public ExecutionContext(byte[] script, HardFork fork = HardFork.Genesis, uint blockHeight = 0, long initialGas = 1_000000L, int depth = 0, ExecutionContext? parent = null)
         {
+            script = [.. script, (byte)OpCode.RET];
+
             _script = script.Clone() as byte[] ?? throw new ArgumentNullException(nameof(script));
-            Gas = initialGas;
-            Depth = depth;
-            Parent = parent;
-            Frame = new StackFrame(-1, null);
+            _blockHeight = blockHeight;
+            _fork = fork;
+
+            _initialGasLeft = initialGas;
+            _contextDepth = depth;
+            _parentContext = parent;
+
+            Frame = new(_parentContext?.Frame);
         }
 
         /// <summary>
@@ -95,39 +114,41 @@ namespace Neo.VM.Core
         /// </summary>
         public bool ShouldContinue()
         {
-            return IsExecuting && InstructionPointer < Script.Length && Gas > 0;
+            return IsExecuting && InstructionPointer < Script.Length && _initialGasLeft > 0;
         }
 
         /// <summary>
         /// Consume gas for an operation
         /// </summary>
-        public bool ConsumeGas(long amount)
+        public bool ConsumeGas(OpCode opcode)
         {
-            if (Gas < amount)
+            var cost = GasTable.GetGasCost(opcode, HardFork);
+
+            if (_initialGasLeft < cost)
             {
-                Gas = 0;
                 IsExecuting = false;
                 return false;
             }
 
-            Gas -= amount;
+            _initialGasLeft -= cost;
+            _maxGasConsumed += cost;
             return true;
         }
 
         /// <summary>
         /// Push value onto current frame's evaluation stack
         /// </summary>
-        public void Push(VMObject item)
+        public void Push(VMObject item, bool addReferenceItem = true, bool addReferenceChildren = true)
         {
-            Frame.Push(item);
+            Frame.Push(item, addReferenceItem, addReferenceChildren);
         }
 
         /// <summary>
         /// Pop value from current frame's evaluation stack
         /// </summary>
-        public VMObject Pop()
+        public VMObject Pop(bool releaseReferenceItem = true, bool releaseReferenceChildren = true)
         {
-            return Frame.Pop();
+            return Frame.Pop(releaseReferenceItem, releaseReferenceChildren);
         }
 
         /// <summary>

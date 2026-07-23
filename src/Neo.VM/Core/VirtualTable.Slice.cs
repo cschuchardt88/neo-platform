@@ -20,6 +20,8 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM;
+using Neo.Core.VM.Type;
 using Neo.VM.Types;
 using System;
 
@@ -34,7 +36,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 1, Push 1</remarks>
-        public virtual void NewBuffer(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void NewBuffer(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var length = unchecked((int)engine.CurrentContext!.Pop().GetInteger());
 
@@ -49,7 +51,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 5, Push 0</remarks>
-        public virtual void Memcpy(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void Memcpy(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var count = unchecked((int)engine.CurrentContext!.Pop().GetInteger());
             if (count < 0)
@@ -59,7 +61,7 @@ namespace Neo.VM.Core
             if (si < 0)
                 throw new InvalidOperationException($"The source index can not be negative for {nameof(OpCode.MEMCPY)}, index: {si}.");
 
-            var src = (VMBuffer)engine.CurrentContext!.Pop();
+            var src = new VMBuffer(engine.CurrentContext!.Pop().AsSpan());
             if (checked(si + count) > src.Length)
                 throw new InvalidOperationException($"The source index + count is out of range for {nameof(OpCode.MEMCPY)}, index: {si}, count: {count}, {si}/[0, {src.Length}].");
 
@@ -67,7 +69,7 @@ namespace Neo.VM.Core
             if (di < 0)
                 throw new InvalidOperationException($"The destination index can not be negative for {nameof(OpCode.MEMCPY)}, index: {si}.");
 
-            var dst = (VMBuffer)engine.CurrentContext!.Pop();
+            var dst = new VMBuffer(engine.CurrentContext!.Pop().AsSpan());
             if (checked(di + count) > dst.Size)
                 throw new InvalidOperationException($"The destination index + count is out of range for {nameof(OpCode.MEMCPY)}, index: {di}, count: {count}, {di}/[0, {dst.Size}].");
 
@@ -82,15 +84,42 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 2, Push 1</remarks>
-        public virtual void Cat(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void Cat(VirtualMachineEngine engine, OpCodeInst instruction)
         {
-            var x2 = engine.CurrentContext!.Pop().GetReadOnlySpan();
-            var x1 = engine.CurrentContext!.Pop().GetReadOnlySpan();
-            var length = x1.Length + x2.Length;
+            var x2 = engine.CurrentContext!.Pop();
+            var x1 = engine.CurrentContext!.Pop();
+
+            switch (x2.Type)
+            {
+                case VMObjectType.Array:
+                case VMObjectType.Struct:
+                case VMObjectType.Map:
+                case VMObjectType.Interop:
+                    // NOTE: Matching official neo-vm (see https://github.com/neo-project/proposals/issues/234)
+                    throw new InvalidCastException();
+                default:
+                    break;
+            }
+
+            switch (x1.Type)
+            {
+                case VMObjectType.Array:
+                case VMObjectType.Struct:
+                case VMObjectType.Map:
+                case VMObjectType.Interop:
+                    // NOTE: Matching official neo-vm (see https://github.com/neo-project/proposals/issues/234)
+                    throw new InvalidCastException();
+                default:
+                    break;
+            }
+
+            var span1 = x1.AsSpan();
+            var span2 = x2.AsSpan();
+            var length = span1.Length + span2.Length;
 
             engine.Limits.AssertMaxItemSize(length);
 
-            var result = new VMBuffer([.. x1, .. x2]);
+            var result = new VMBuffer([.. span1, .. span2]);
             engine.CurrentContext!.Push(result);
         }
 
@@ -101,7 +130,7 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 3, Push 1</remarks>
-        public virtual void SubStr(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void SubStr(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var count = unchecked((int)engine.CurrentContext!.Pop().GetInteger());
             if (count < 0)
@@ -111,11 +140,26 @@ namespace Neo.VM.Core
             if (index < 0)
                 throw new InvalidOperationException($"The index can not be negative for {nameof(OpCode.SUBSTR)}, index: {index}.");
 
-            var x = engine.CurrentContext!.Pop().GetReadOnlySpan();
-            if (checked(index + count) > x.Length)
-                throw new InvalidOperationException($"The index + count is out of range for {nameof(OpCode.SUBSTR)}, index: {index}, count: {count}, {index + count}/[0, {x.Length}].");
+            var x = engine.CurrentContext!.Pop();
 
-            var result = new VMBuffer([.. x[index..count]]);
+            switch (x.Type)
+            {
+                case VMObjectType.Array:
+                case VMObjectType.Struct:
+                case VMObjectType.Map:
+                case VMObjectType.Interop:
+                    // NOTE: Matching official neo-vm (see https://github.com/neo-project/proposals/issues/234)
+                    throw new InvalidCastException();
+                default:
+                    break;
+            }
+
+            var span = x.AsSpan();
+
+            if (checked(index + count) > span.Length)
+                throw new InvalidOperationException($"The index + count is out of range for {nameof(OpCode.SUBSTR)}, index: {index}, count: {count}, {index + count}/[0, {span.Length}].");
+
+            var result = new VMBuffer([.. span.Slice(index, count)]);
             engine.CurrentContext!.Push(result);
         }
 
@@ -126,17 +170,32 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 2, Push 1</remarks>
-        public virtual void Left(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void Left(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var count = unchecked((int)engine.CurrentContext!.Pop().GetInteger());
             if (count < 0)
                 throw new InvalidOperationException($"The count can not be negative for {nameof(OpCode.LEFT)}, count: {count}.");
 
-            var x = engine.CurrentContext!.Pop().GetReadOnlySpan();
-            if (count > x.Length)
-                throw new InvalidOperationException($"The count is out of range for {nameof(OpCode.LEFT)}, {count}/[0, {x.Length}].");
+            var x = engine.CurrentContext!.Pop();
 
-            var result = new VMBuffer([.. x[..count]]);
+            switch (x.Type)
+            {
+                case VMObjectType.Array:
+                case VMObjectType.Struct:
+                case VMObjectType.Map:
+                case VMObjectType.Interop:
+                    // NOTE: Matching official neo-vm (see https://github.com/neo-project/proposals/issues/234)
+                    throw new InvalidCastException();
+                default:
+                    break;
+            }
+
+            var span = x.AsSpan();
+
+            if (count > span.Length)
+                throw new InvalidOperationException($"The count is out of range for {nameof(OpCode.LEFT)}, {count}/[0, {span.Length}].");
+
+            var result = new VMBuffer([.. span[..count]]);
             engine.CurrentContext!.Push(result);
         }
 
@@ -147,17 +206,32 @@ namespace Neo.VM.Core
         /// <param name="engine">The execution engine.CurrentContext!.</param>
         /// <param name="instruction">The instruction being executed.</param>
         /// <remarks>Pop 2, Push 1</remarks>
-        public virtual void Right(NeoVirtualMachine engine, VMInstruction instruction)
+        public virtual void Right(VirtualMachineEngine engine, OpCodeInst instruction)
         {
             var count = unchecked((int)engine.CurrentContext!.Pop().GetInteger());
             if (count < 0)
                 throw new InvalidOperationException($"The count can not be negative for {nameof(OpCode.RIGHT)}, count: {count}.");
 
-            var x = engine.CurrentContext!.Pop().GetReadOnlySpan();
-            if (count > x.Length)
-                throw new InvalidOperationException($"The count is out of range for {nameof(OpCode.RIGHT)}, {count}/[0, {x.Length}].");
+            var x = engine.CurrentContext!.Pop();
 
-            var result = new VMBuffer([.. x[^count..^0]]);
+            switch (x.Type)
+            {
+                case VMObjectType.Array:
+                case VMObjectType.Struct:
+                case VMObjectType.Map:
+                case VMObjectType.Interop:
+                    // NOTE: Matching official neo-vm (see https://github.com/neo-project/proposals/issues/234)
+                    throw new InvalidCastException();
+                default:
+                    break;
+            }
+
+            var span = x.AsSpan();
+
+            if (count > span.Length)
+                throw new InvalidOperationException($"The count is out of range for {nameof(OpCode.RIGHT)}, {count}/[0, {span.Length}].");
+
+            var result = new VMBuffer([.. span[^count..^0]]);
             engine.CurrentContext!.Push(result);
         }
     }

@@ -20,19 +20,18 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM.Type;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMNull : VMObject
+    public class VMNull : VMObject, IEquatable<VMNull>
     {
         public override VMObjectType Type => VMObjectType.Any;
 
-        public static VMNull Instance => _instance;
-
-
-        private static readonly VMNull _instance = new();
+        public static VMNull Instance => new();
 
         protected override void Dispose(bool disposing)
         {
@@ -40,9 +39,16 @@ namespace Neo.VM.Types
             base.Dispose(disposing);
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
-            return obj is VMNull || obj is null;
+            if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return true;
+            return Equals(obj as VMNull);
+        }
+
+        public bool Equals([NotNullWhen(true)] VMNull? other)
+        {
+            return true;
         }
 
         public override int GetHashCode()
@@ -52,8 +58,6 @@ namespace Neo.VM.Types
 
         public override VMObject Clone()
         {
-            AddReference();
-
             return this;
         }
 
@@ -65,11 +69,6 @@ namespace Neo.VM.Types
         public override BigInteger GetInteger()
         {
             return BigInteger.Zero;
-        }
-
-        public override ReadOnlySpan<byte> GetReadOnlySpan()
-        {
-            return [];
         }
 
         public override string ToString()

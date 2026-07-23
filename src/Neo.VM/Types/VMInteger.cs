@@ -20,12 +20,15 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Core.VM.Type;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Neo.VM.Types
 {
-    public class VMInteger : VMObject
+    public class VMInteger : VMObject, IEquatable<VMInteger>
     {
         public const int MaxSize = 32;
 
@@ -45,9 +48,10 @@ namespace Neo.VM.Types
             base.Dispose(disposing);
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
             if (ReferenceEquals(obj, this)) return true;
+            if (obj is null) return false;
             return Equals(obj as VMInteger);
         }
 
@@ -59,8 +63,6 @@ namespace Neo.VM.Types
         public override VMObject Clone()
         {
             var clone = new VMInteger(_value);
-
-            clone.AddReference(); // Since we're cloning, we add a reference
 
             return clone;
         }
@@ -75,46 +77,36 @@ namespace Neo.VM.Types
             return _value;
         }
 
-        public override ReadOnlySpan<byte> GetReadOnlySpan()
+        protected override ReadOnlySpan<byte> ComputeSpan(HashSet<VMObject> visited)
         {
             return _value.ToByteArray();
         }
 
+        public bool Equals([NotNullWhen(true)] VMInteger? other)
+        {
+            if (ReferenceEquals(other, this)) return true;
+            if (other is null) return false;
+            if (RefCount != other.RefCount) return false;
+            return _value == other._value;
+        }
+
         public static VMInteger operator +(VMInteger a, VMInteger b)
         {
-            a.AddReference();
-            b.AddReference();
-
             var result = new VMInteger(a._value + b._value);
-
-            a.Release();
-            b.Release();
 
             return result;
         }
 
         public static VMInteger operator -(VMInteger a, VMInteger b)
         {
-            a.AddReference();
-            b.AddReference();
-
             var result = new VMInteger(a._value - b._value);
-
-            a.Release();
-            b.Release();
 
             return result;
         }
 
         public static VMInteger operator *(VMInteger a, VMInteger b)
         {
-            a.AddReference();
-            b.AddReference();
-
             var result = new VMInteger(a._value * b._value);
-
-            a.Release();
-            b.Release();
 
             return result;
         }
@@ -124,26 +116,14 @@ namespace Neo.VM.Types
             if (b._value == BigInteger.Zero)
                 throw new DivideByZeroException("Division by zero in VMInteger");
 
-            a.AddReference();
-            b.AddReference();
-
             var result = new VMInteger(a._value / b._value);
-
-            a.Release();
-            b.Release();
 
             return result;
         }
 
         public static VMInteger operator %(VMInteger a, VMInteger b)
         {
-            a.AddReference();
-            b.AddReference();
-
             var result = new VMInteger(a._value % b._value);
-
-            a.Release();
-            b.Release();
 
             return result;
         }
@@ -155,8 +135,7 @@ namespace Neo.VM.Types
         public static bool operator ==(VMInteger a, VMInteger b)
         {
             if (ReferenceEquals(a, b)) return true;
-            if (a is null || b is null) return false;
-            return a._value == b._value;
+            return a.Equals(b);
         }
 
         public static bool operator !=(VMInteger a, VMInteger b) =>
