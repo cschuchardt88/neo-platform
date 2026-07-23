@@ -27,6 +27,7 @@ using Neo.Platform.Hosting.Factory;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Neo.Platform.Hosting.Provider
 {
@@ -46,8 +47,10 @@ namespace Neo.Platform.Hosting.Provider
             // ==================================
 
             // Hosting Environment
+            var contentRootDirectory = Environment.CurrentDirectory;
+
             Data.Add(HostDefaults.EnvironmentKey, NeoHostingEnvironmentNames.LocalNet);
-            Data.Add(HostDefaults.ContentRootKey, Environment.CurrentDirectory);
+            Data.Add(HostDefaults.ContentRootKey, contentRootDirectory);
 
             // Protocol Configuration
             var protocolNetwork = NeoHostingFactory.GetDevNetwork(0);
@@ -59,6 +62,14 @@ namespace Neo.Platform.Hosting.Provider
             Data.Add(ProtocolSettingNames.MemoryPoolMaxTransactionsKey, "50000");
             Data.Add(ProtocolSettingNames.MaxTraceableBlocksKey, "2102400");
             Data.Add(ProtocolSettingNames.InitialGasDistributionKey, "5200000000000000");
+
+            // Store Configuration
+            Data.Add(BlockchainStoreNames.DatabasePathKey, Path.Combine(contentRootDirectory, "data", "chain"));
+            Data.Add(BlockchainStoreNames.CreateIfMissingKey, bool.TrueString);
+
+            // Backup Configuration
+            Data.Add(BlockchainStoreNames.BackupPathKey, Path.Combine(contentRootDirectory, "data", "backups"));
+            Data.Add(BlockchainStoreNames.MaxBackupsKey, "3");
 
             // ==================================
             // * End of Initial Defaults        *

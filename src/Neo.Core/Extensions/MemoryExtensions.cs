@@ -78,6 +78,12 @@ namespace Neo.Core.Extensions
             return val;
         }
 
+        public static int ToHashCode(this Memory<byte> data, int seed) =>
+            data.Aggregate(seed,
+                (hash, b) =>
+                        unchecked((hash * 31) ^ b)
+                );
+
         public static int ToHashCode(this Memory<byte> data) =>
             data.Aggregate(data.Length,
                 (hash, b) =>

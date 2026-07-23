@@ -20,29 +20,48 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.Serialization;
-using System.IO;
-using System.Linq;
-
-namespace Neo.Core.Extensions
+namespace Neo.Core.Net
 {
-    public static class INeoSerializableExtensions
+    public enum NodeCapabilityType : byte
     {
+        #region Servers
+
         /// <summary>
-        /// Converts an <see cref="INeoSerializable"/> object to a byte array.
+        /// Indicates that the node is listening on a Tcp port.
         /// </summary>
-        /// <param name="source">The <see cref="INeoSerializable"/> object to be converted.</param>
-        /// <returns>The converted byte array.</returns>
-        public static byte[] ToArray(this INeoSerializable source)
-        {
-            using var ms = new MemoryStream();
+        TcpServer = 0x01,
 
-            source.Serialize(ms);
-            return ms.ToArray();
-        }
+        /// <summary>
+        /// Disable p2p compression
+        /// </summary>
+        DisableCompression = 0x03,
 
-        public static int GetSerializedSize(this INeoSerializable[] source) =>
-            source.Length.GetCompactSize() +
-            source.Sum(static s => s.Size);
+        #endregion
+
+        #region Data availability
+
+        /// <summary>
+        /// Indicates that the node has complete current state.
+        /// </summary>
+        FullNode = 0x10,
+
+        /// <summary>
+        /// Indicates that the node stores full block history. These nodes can be used
+        /// for P2P synchronization from genesis (other ones can cut the tail and
+        /// won't respond to requests for old (wrt MaxTraceableBlocks) blocks).
+        /// </summary>
+        ArchivalNode = 0x11,
+
+        #endregion
+
+        #region Private extensions
+
+        /// <summary>
+        /// The first extension ID. Any subsequent can be used in an
+        /// implementation-specific way.
+        /// </summary>
+        Extension0 = 0xf0
+
+        #endregion
     }
 }

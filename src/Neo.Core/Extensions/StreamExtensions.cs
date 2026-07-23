@@ -156,7 +156,8 @@ namespace Neo.Core.Extensions
                 t.Serialize(stream);
         }
 
-        public static T ReadCompact<T>(this Stream stream) where T : unmanaged, IBinaryInteger<T>
+        public static T ReadCompact<T>(this Stream stream)
+            where T : unmanaged, IBinaryInteger<T>
         {
             if (stream.CanRead == false)
                 throw new NotSupportedException("Stream does not support reading.");

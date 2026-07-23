@@ -25,7 +25,7 @@ namespace Neo.Core.Net
     /// <summary>
     /// Represents the command of a message.
     /// </summary>
-    public enum MessageCommandType : byte
+    public enum ProtocolMessageCommand : byte
     {
         #region handshaking
 

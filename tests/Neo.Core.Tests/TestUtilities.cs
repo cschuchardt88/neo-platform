@@ -23,6 +23,9 @@
 using Neo.Core.Blockchain;
 using Neo.Core.VM;
 using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace Neo.Core.Tests
 {
@@ -43,5 +46,34 @@ namespace Neo.Core.Tests
                     VerificationScript = [(byte)OpCode.PUSH1],
                 }
             };
+
+        /// <summary>
+        /// Binds an ephemeral TCP port on loopback and returns it (listener is stopped immediately).
+        /// </summary>
+        public static int GetFreeTcpPort()
+        {
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener.Stop();
+            return port;
+        }
+
+        /// <summary>
+        /// Polls <paramref name="condition"/> until it is true or <paramref name="timeout"/> elapses.
+        /// </summary>
+        public static async Task<bool> WaitForAsync(Func<bool> condition, TimeSpan timeout)
+        {
+            var start = DateTime.UtcNow;
+            while (DateTime.UtcNow - start < timeout)
+            {
+                if (condition())
+                    return true;
+
+                await Task.Delay(20);
+            }
+
+            return condition();
+        }
     }
 }

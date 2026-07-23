@@ -42,7 +42,7 @@ namespace Neo.Platform.Hosting.Factory
             return new(Path.Combine(rootPath, filename));
         }
 
-        public static Mutex CreateMutex(string? name = null)
+        public static Mutex CreateMutex(string? name = default)
         {
             if (string.IsNullOrEmpty(name))
                 name = Path.Combine(s_globalString, Path.GetRandomFileName());
