@@ -20,38 +20,26 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Core.Extensions;
-using System.IO;
-
-namespace Neo.Core.Net.Message
+namespace Neo.Core.Net
 {
-    public class ServerCapabilityMessage : NodeCapabilityMessage
+    /// <summary>
+    /// Neo N3 P2P handshake progress (Version → Verack → Ready).
+    /// </summary>
+    public enum NodeHandshakeState : byte
     {
-        public override NodeCapabilityType Type => NodeCapabilityType.TcpServer;
+        /// <summary>
+        /// Waiting for the remote <see cref="ProtocolMessageCommand.Version"/>.
+        /// </summary>
+        WaitingForVersion = 0,
 
-        public ushort Port { get; private set; }
+        /// <summary>
+        /// Local Version already processed; waiting for <see cref="ProtocolMessageCommand.VersionAck"/>.
+        /// </summary>
+        WaitingForVerack = 1,
 
-        public override int Size =>
-            base.Size +
-            sizeof(ushort);
-
-        public ServerCapabilityMessage()
-        {
-        }
-
-        public ServerCapabilityMessage(ushort port)
-        {
-            Port = port;
-        }
-
-        protected override void DeserializeWithoutType(Stream reader)
-        {
-            Port = reader.Read<ushort>();
-        }
-
-        protected override void SerializeWithoutType(Stream writer)
-        {
-            writer.Write(Port);
-        }
+        /// <summary>
+        /// Handshake finished; normal protocol messages are allowed.
+        /// </summary>
+        Ready = 2,
     }
 }

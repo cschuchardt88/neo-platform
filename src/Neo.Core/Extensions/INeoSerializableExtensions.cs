@@ -43,6 +43,6 @@ namespace Neo.Core.Extensions
 
         public static int GetSerializedSize(this INeoSerializable[] source) =>
             source.Length.GetCompactSize() +
-            (source.Length * source.Sum(s => s.Size));
+            source.Sum(static s => s.Size);
     }
 }

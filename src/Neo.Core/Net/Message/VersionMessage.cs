@@ -80,12 +80,17 @@ namespace Neo.Core.Net.Message
             Timestamp = reader.Read<uint>();
             Nonce = reader.Read<uint>();
             UserAgent = reader.ReadString();
-            Capabilities = new NodeCapabilityMessage[reader.ReadCompact<int>()];
 
+            var capabilityCount = reader.ReadCompact<int>();
+            if (capabilityCount > MaxCapabilities)
+                throw new FormatException($"Invalid capabilities count: {capabilityCount}.");
+
+            Capabilities = new NodeCapabilityMessage[capabilityCount];
             for (var i = 0; i < Capabilities.Length; i++)
                 Capabilities[i] = NodeCapabilityMessage.DeserializeFrom(reader);
 
-            if (Capabilities.Distinct().Count() != Capabilities.Length)
+            // Duplicate check is by capability Type (Neo VersionPayload).
+            if (Capabilities.Select(static c => c.Type).Distinct().Count() != Capabilities.Length)
                 throw new FormatException("Duplicate node capabilities.");
         }
 

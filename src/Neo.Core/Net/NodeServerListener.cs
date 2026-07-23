@@ -22,9 +22,10 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Neo.Core.Factory;
+using Neo.Core.Net.Message;
 using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -32,121 +33,239 @@ using System.Threading.Tasks;
 
 namespace Neo.Core.Net
 {
+    /// <summary>
+    /// TCP listener that accepts Neo P2P peers and starts each connection's handshake.
+    /// Bind exclusivity is enforced by the OS (no process-wide named mutex).
+    /// </summary>
     public class NodeServerListener : IAsyncDisposable
     {
-        public NodeConnection[] Clients => [.. _connections];
+        /// <summary>
+        /// Default accept backlog when <see cref="Start()"/> is called without a value.
+        /// </summary>
+        public const int DefaultBacklog = 128;
+
+        public NodeConnection[] Clients => [.. _connections.Keys];
 
         public ProtocolSettings ProtocolSettings => _protocolSettings;
 
         public EndPoint LocalEndPoint => _endPoint;
 
+        public bool IsActive => _isActive != 0;
+
+        /// <summary>
+        /// Random nonce identifying this node (Neo LocalNode.Nonce).
+        /// </summary>
+        public uint Nonce => _nonce;
+
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger _logger;
 
-        private readonly EndPoint _endPoint;
+        private readonly IPEndPoint _endPoint;
         private readonly Socket _serverSocket;
         private readonly ProtocolSettings _protocolSettings;
-
-        private readonly Mutex _mutex;
+        private readonly uint _nonce;
+        private readonly NodeCapabilityMessage[] _capabilities;
 
         private readonly CancellationTokenSource _listeningTokenSource = new();
-        private readonly CancellationToken _listeningToken;
-
-        private readonly ConcurrentBag<NodeConnection> _connections = [];
-
-        private bool _isActive = false;
+        private readonly ConcurrentDictionary<NodeConnection, byte> _connections = [];
 
         private Task _listeningTask = Task.CompletedTask;
+        private int _isActive;
+        private int _disposed;
 
         public NodeServerListener(
             IPEndPoint endPoint,
             ProtocolSettings? protocolSettings = default,
             ILoggerFactory? loggerFactory = default)
         {
-            _mutex = new Mutex(false, $"{nameof(NodeServerListener)}-{endPoint}", out var createdNew);
-
-            if (createdNew == false)
-            {
-                _mutex.Dispose();
-                throw new ApplicationException($"Server \'{endPoint}\' is already in use.");
-            }
+            ArgumentNullException.ThrowIfNull(endPoint);
 
             _endPoint = endPoint;
-            _serverSocket = new(_endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            _serverSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _protocolSettings = protocolSettings ?? ProtocolSettings.Default;
-            _loggerFactory = _loggerFactory ?? NullLoggerFactory.Instance;
+            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
             _logger = _loggerFactory.CreateLogger<NodeServerListener>();
-            _listeningToken = _listeningTokenSource.Token;
+            _nonce = RandomNumberFactory.NextUInt32();
+            _capabilities = CreateLocalCapabilities(endPoint);
         }
 
         public async ValueTask DisposeAsync()
         {
-            _listeningTokenSource.Cancel();
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+                return;
 
-            await _listeningTask;
+            Interlocked.Exchange(ref _isActive, 0);
 
-            foreach (var client in _connections)
-                await client.DisposeAsync();
+            try
+            {
+                _listeningTokenSource.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            // Unblock AcceptAsync.
+            try
+            {
+                _serverSocket.Dispose();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            try
+            {
+                await _listeningTask.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+            }
+
+            foreach (var client in _connections.Keys)
+            {
+                client.Disconnected -= OnClientDisconnected;
+                await client.DisposeAsync().ConfigureAwait(false);
+            }
 
             _connections.Clear();
-            _serverSocket.Dispose();
-            _isActive = false;
-
+            _listeningTokenSource.Dispose();
             GC.SuppressFinalize(this);
         }
 
         public void Start()
         {
-            Start((int)SocketOptionName.MaxConnections);
+            Start(DefaultBacklog);
         }
 
         public void Start(int backlog)
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(backlog);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(backlog);
+            ObjectDisposedException.ThrowIf(_disposed != 0, this);
 
-            // Already listening.
-            if (_isActive)
-            {
+            if (Interlocked.CompareExchange(ref _isActive, 1, 0) != 0)
                 return;
-            }
-
-            _serverSocket.Bind(_endPoint);
 
             try
             {
+                _serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                _serverSocket.Bind(_endPoint);
                 _serverSocket.Listen(backlog);
-                _listeningTask = StartAsync();
+                _listeningTask = AcceptLoopAsync();
             }
-            catch (SocketException)
+            catch
             {
+                Interlocked.Exchange(ref _isActive, 0);
                 throw;
             }
-
-            _isActive = true;
         }
 
-        private async Task StartAsync()
+        /// <summary>
+        /// Outbound connect to a remote peer using this node's network identity (nonce + capabilities).
+        /// The connection is tracked in <see cref="Clients"/> until it disconnects.
+        /// Listening is optional — you may call this without starting the accept loop.
+        /// </summary>
+        public async Task<NodeConnection> ConnectAsync(
+            IPEndPoint remoteEndPoint,
+            CancellationToken cancellationToken = default)
         {
-            while (true)
+            ArgumentNullException.ThrowIfNull(remoteEndPoint);
+            ObjectDisposedException.ThrowIf(_disposed != 0, this);
+
+            var connection = await NodeConnection.ConnectAsync(
+                remoteEndPoint,
+                _protocolSettings,
+                _nonce,
+                _capabilities,
+                _loggerFactory,
+                cancellationToken).ConfigureAwait(false);
+
+            if (TrackConnection(connection) == false)
             {
+                await connection.DisposeAsync().ConfigureAwait(false);
+                throw new InvalidOperationException("Failed to track outbound connection.");
+            }
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Connected outbound to {Remote}.", connection.RemoteEndPoint);
+
+            return connection;
+        }
+
+        private async Task AcceptLoopAsync()
+        {
+            var token = _listeningTokenSource.Token;
+
+            while (token.IsCancellationRequested == false)
+            {
+                Socket clientSocket;
                 try
                 {
-                    var clientSocket = await _serverSocket.AcceptAsync(_listeningToken);
-                    var clientConnection = new NodeConnection(clientSocket, _loggerFactory);
-
-                    clientConnection.Start();
-
-                    _connections.Add(clientConnection);
+                    clientSocket = await _serverSocket.AcceptAsync(token).ConfigureAwait(false);
                 }
-                catch (IOException ex) when (_listeningToken.IsCancellationRequested == false)
-                {
-                    _logger.LogError("{Message}", ex.ToString());
-                }
-                catch (OperationCanceledException) when (_listeningToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
                     break;
                 }
+                catch (ObjectDisposedException) when (_disposed != 0)
+                {
+                    break;
+                }
+                catch (SocketException ex) when (token.IsCancellationRequested == false)
+                {
+                    _logger.LogError(ex, "Accept failed.");
+                    continue;
+                }
+
+                var clientConnection = new NodeConnection(
+                    clientSocket,
+                    _protocolSettings,
+                    _nonce,
+                    _capabilities,
+                    _loggerFactory);
+
+                if (TrackConnection(clientConnection) == false)
+                {
+                    await clientConnection.DisposeAsync().ConfigureAwait(false);
+                    continue;
+                }
+
+                clientConnection.Start();
+
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("Accepted peer {Remote}.", clientConnection.RemoteEndPoint);
             }
+        }
+
+        private bool TrackConnection(NodeConnection connection)
+        {
+            connection.Disconnected += OnClientDisconnected;
+
+            if (_connections.TryAdd(connection, 0))
+                return true;
+
+            connection.Disconnected -= OnClientDisconnected;
+            return false;
+        }
+
+        private void OnClientDisconnected(object? sender, EventArgs e)
+        {
+            if (sender is not NodeConnection connection)
+                return;
+
+            connection.Disconnected -= OnClientDisconnected;
+            _connections.TryRemove(connection, out _);
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Peer disconnected {Remote}.", connection.RemoteEndPoint);
+        }
+
+        private static NodeCapabilityMessage[] CreateLocalCapabilities(IPEndPoint endPoint)
+        {
+            return
+            [
+                new FullNodeCapabilityMessage(startHeight: 0),
+                new ServerCapabilityMessage(port: (ushort)endPoint.Port),
+            ];
         }
     }
 }

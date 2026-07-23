@@ -33,19 +33,24 @@ namespace Neo.Core.Net.Message
 
         public override int Size =>
             base.Size +
-            sizeof(uint); // StartHeight
+            sizeof(uint);
 
-        public override void Deserialize(Stream reader)
+        public FullNodeCapabilityMessage()
         {
-            base.Deserialize(reader);
+        }
 
+        public FullNodeCapabilityMessage(uint startHeight)
+        {
+            StartHeight = startHeight;
+        }
+
+        protected override void DeserializeWithoutType(Stream reader)
+        {
             StartHeight = reader.Read<uint>();
         }
 
-        public override void Serialize(Stream writer)
+        protected override void SerializeWithoutType(Stream writer)
         {
-            base.Serialize(writer);
-
             writer.Write(StartHeight);
         }
     }

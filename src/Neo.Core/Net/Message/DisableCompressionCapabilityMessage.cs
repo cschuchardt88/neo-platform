@@ -34,18 +34,14 @@ namespace Neo.Core.Net.Message
             base.Size +
             1;
 
-        public override void Deserialize(Stream reader)
+        protected override void DeserializeWithoutType(Stream reader)
         {
-            base.Deserialize(reader);
-
             if (reader.ReadByte() != 0)
                 throw new FormatException("Invalid capability data");
         }
 
-        public override void Serialize(Stream writer)
+        protected override void SerializeWithoutType(Stream writer)
         {
-            base.Serialize(writer);
-
             writer.Write((byte)0);
         }
     }
