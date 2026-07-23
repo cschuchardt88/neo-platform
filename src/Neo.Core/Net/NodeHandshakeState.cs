@@ -20,16 +20,26 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
-using System;
-using System.IO;
-
-namespace Neo.Configuration
+namespace Neo.Core.Net
 {
-    public class BlockchainBackupOptions : JsonModel
+    /// <summary>
+    /// Neo N3 P2P handshake progress (Version → Verack → Ready).
+    /// </summary>
+    public enum NodeHandshakeState : byte
     {
-        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+        /// <summary>
+        /// Waiting for the remote <see cref="ProtocolMessageCommand.Version"/>.
+        /// </summary>
+        WaitingForVersion = 0,
 
-        public int MaxBackups { get; init; } = 3;
+        /// <summary>
+        /// Local Version already processed; waiting for <see cref="ProtocolMessageCommand.VersionAck"/>.
+        /// </summary>
+        WaitingForVerack = 1,
+
+        /// <summary>
+        /// Handshake finished; normal protocol messages are allowed.
+        /// </summary>
+        Ready = 2,
     }
 }

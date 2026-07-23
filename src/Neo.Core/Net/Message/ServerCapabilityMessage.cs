@@ -20,16 +20,38 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
-using System;
+using Neo.Core.Extensions;
 using System.IO;
 
-namespace Neo.Configuration
+namespace Neo.Core.Net.Message
 {
-    public class BlockchainBackupOptions : JsonModel
+    public class ServerCapabilityMessage : NodeCapabilityMessage
     {
-        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+        public override NodeCapabilityType Type => NodeCapabilityType.TcpServer;
 
-        public int MaxBackups { get; init; } = 3;
+        public ushort Port { get; private set; }
+
+        public override int Size =>
+            base.Size +
+            sizeof(ushort);
+
+        public ServerCapabilityMessage()
+        {
+        }
+
+        public ServerCapabilityMessage(ushort port)
+        {
+            Port = port;
+        }
+
+        protected override void DeserializeWithoutType(Stream reader)
+        {
+            Port = reader.Read<ushort>();
+        }
+
+        protected override void SerializeWithoutType(Stream writer)
+        {
+            writer.Write(Port);
+        }
     }
 }

@@ -20,16 +20,38 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
-using System;
+using Neo.Core.Extensions;
 using System.IO;
 
-namespace Neo.Configuration
+namespace Neo.Core.Net.Message
 {
-    public class BlockchainBackupOptions : JsonModel
+    public class FullNodeCapabilityMessage : NodeCapabilityMessage
     {
-        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+        public override NodeCapabilityType Type => NodeCapabilityType.FullNode;
 
-        public int MaxBackups { get; init; } = 3;
+        public uint StartHeight { get; private set; }
+
+        public override int Size =>
+            base.Size +
+            sizeof(uint);
+
+        public FullNodeCapabilityMessage()
+        {
+        }
+
+        public FullNodeCapabilityMessage(uint startHeight)
+        {
+            StartHeight = startHeight;
+        }
+
+        protected override void DeserializeWithoutType(Stream reader)
+        {
+            StartHeight = reader.Read<uint>();
+        }
+
+        protected override void SerializeWithoutType(Stream writer)
+        {
+            writer.Write(StartHeight);
+        }
     }
 }

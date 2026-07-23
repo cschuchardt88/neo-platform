@@ -37,8 +37,19 @@ namespace Neo.Core
             new DateTimeOffset(timeSpan.Ticks, offset)
                 .ToUnixTimeMilliseconds();
 
+        public static uint ToUnixTimeSeconds(DateTime dateTime, TimeSpan offset = default) =>
+            (uint)new DateTimeOffset(dateTime, offset)
+                .ToUnixTimeSeconds();
+
+        public static uint ToUnixTimeSeconds(TimeSpan timeSpan, TimeSpan offset = default) =>
+            (uint)new DateTimeOffset(timeSpan.Ticks, offset)
+                .ToUnixTimeSeconds();
+
         public static DateTime FromUnixTimeMilliseconds(ulong milliseconds, bool isLocalDateTime = false) =>
             FromUnixTimeMilliseconds((long)milliseconds, isLocalDateTime);
+
+        public static DateTime FromUnixTimeSeconds(uint seconds, bool isLocalDateTime = false) =>
+            FromUnixTimeMilliseconds(seconds * TimeSpan.MillisecondsPerSecond, isLocalDateTime);
 
         public static DateTime FromUnixTimeMilliseconds(long milliseconds, bool isLocalDateTime = false)
         {

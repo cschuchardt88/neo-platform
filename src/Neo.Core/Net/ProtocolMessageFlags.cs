@@ -20,16 +20,21 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
 using System;
-using System.IO;
 
-namespace Neo.Configuration
+namespace Neo.Core.Net
 {
-    public class BlockchainBackupOptions : JsonModel
+    [Flags]
+    public enum ProtocolMessageFlags : byte
     {
-        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+        /// <summary>
+        /// No flag is set for the message.
+        /// </summary>
+        None = 0,
 
-        public int MaxBackups { get; init; } = 3;
+        /// <summary>
+        /// Indicates that the message is compressed.
+        /// </summary>
+        Compressed = 1 << 0
     }
 }

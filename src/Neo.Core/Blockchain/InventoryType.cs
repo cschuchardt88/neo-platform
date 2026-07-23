@@ -32,16 +32,16 @@ namespace Neo.Core.Blockchain
         /// <summary>
         /// Indicates that the inventory is a transaction.
         /// </summary>
-        TX = MessageCommandType.Transaction,
+        TX = ProtocolMessageCommand.Transaction,
 
         /// <summary>
         /// Indicates that the inventory is a block.
         /// </summary>
-        Block = MessageCommandType.Block,
+        Block = ProtocolMessageCommand.Block,
 
         /// <summary>
         /// Indicates that the inventory is an extensible payload.
         /// </summary>
-        Extensible = MessageCommandType.Extensible
+        Extensible = ProtocolMessageCommand.Extensible
     }
 }

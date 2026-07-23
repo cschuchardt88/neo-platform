@@ -20,8 +20,10 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using K4os.Compression.LZ4;
 using Neo.Core.Serialization;
 using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 namespace Neo.Core.Extensions
@@ -78,16 +80,34 @@ namespace Neo.Core.Extensions
             return val;
         }
 
-        public static int ToHashCode(this Memory<byte> data, int seed = 397) =>
-            data.Aggregate(seed,
-                (hash, b) =>
-                        unchecked((hash * 31) ^ b)
-                );
-
         public static int ToHashCode(this ReadOnlySpan<byte> data, int seed = 397) =>
             data.Aggregate(seed,
                 (hash, b) =>
                         unchecked((hash * 31) ^ b)
                 );
+
+        public static Span<byte> ToLz4Compress(this ReadOnlySpan<byte> data)
+        {
+            var maxLength = LZ4Codec.MaximumOutputSize(data.Length);
+            Span<byte> buffer = new byte[sizeof(uint) + maxLength];
+
+            BinaryPrimitives.WriteInt32LittleEndian(buffer, data.Length);
+
+            var length = LZ4Codec.Encode(data, buffer[sizeof(uint)..]);
+
+            return buffer[..(sizeof(uint) + length)];
+        }
+
+        public static Span<byte> ToLz4Decompress(this ReadOnlySpan<byte> data)
+        {
+            var length = BinaryPrimitives.ReadInt32LittleEndian(data);
+            Span<byte> result = new byte[length];
+            var decodedBytes = LZ4Codec.Decode(data[4..], result);
+
+            if (decodedBytes != length)
+                throw new FormatException($"Length \'{length}\' does not match the decompressed data length \'{decodedBytes}\'.");
+
+            return result;
+        }
     }
 }
