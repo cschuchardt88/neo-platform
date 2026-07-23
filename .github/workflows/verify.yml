@@ -13,45 +13,15 @@ jobs:
 
     steps:
     - name: Checkout (github)
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup .NET ${{ env.DOTNET_VERSION }}
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Verify Formatting
       run: dotnet format --verify-no-changes --verbosity diagnostic
-
-# --------------------------------------
-# Currnly there is bug in dotnet cli for
-# nuget that breaks when using
-# `Shared Projects`.
-# --------------------------------------
-# TURNING OFF JOB FOR NOW
-#---------------------------------------
-#  verify-packages:
-#    name: Verify Safe Packages
-#    needs: [verify-code]
-
-#    timeout-minutes: 5
-
-#    runs-on: ubuntu-latest
-
-#    steps:
-#    - name: Checkout (github)
-#      uses: actions/checkout@v6
-
-#    - name: Setup .NET ${{ env.DOTNET_VERSION }}
-#      uses: actions/setup-dotnet@v5
-#      with:
-#        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-#    - name: Restore Solution
-#      run: dotnet restore
-
-#    - name: Check Solution Packages
-#      run: dotnet list package --vulnerable --include-transitive
 
   verify-tests:
     name: Verify Tests on ${{ matrix.os }}
@@ -60,6 +30,7 @@ jobs:
     timeout-minutes: 5
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -67,29 +38,28 @@ jobs:
 
     steps:
     - name: Checkout (github)
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup .NET ${{ env.DOTNET_VERSION }}
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Test (macos)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install rocksdb
-        dotnet build -p:GITHUB_ACTIONS=true
-        dotnet test --no-build -p:GITHUB_ACTIONS=true
+    - name: Build
+      run: dotnet build -p:GITHUB_ACTIONS=true
 
-    - name: Test (windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        dotnet build -p:GITHUB_ACTIONS=true
-        dotnet test --no-build -p:GITHUB_ACTIONS=true
+    - name: Test
+      run: >
+        dotnet test --no-build
+        --logger "junit;LogFilePath=TestResults/{assembly}.xml"
+        --binaryLogger:${{ matrix.os }}.binlog
+        -p:GITHUB_ACTIONS=true
 
-    - name: Test (linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get --assume-yes install librocksdb-dev
-        dotnet build -p:GITHUB_ACTIONS=true
-        dotnet test --no-build -p:GITHUB_ACTIONS=true
+    - name: Publish Test Results
+      uses: test-summary/action@dist
+      if: always()
+      with:
+        paths: |
+          tests/**/TestResults/**/*.xml
+        folded: true
+        show: "all"
