@@ -20,16 +20,37 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-namespace Neo.Platform.Storage
+using Neo.Configuration.Json;
+
+namespace Neo.Configuration
 {
     /// <summary>
-    /// Well-known RocksDB column family names used by the blockchain store.
+    /// Configuration options for a running host environment application.
     /// </summary>
-    public static class ColumnFamilyNames
+    public class HostingEnvironmentOptions : JsonModel
     {
         /// <summary>
-        /// The default column family name.
+        /// Gets or sets the name of the environment.
         /// </summary>
-        public static readonly string Default = "default";
+        /// <remarks>
+        /// This value is case-sensitive and should be one of the well-known environment names.
+        /// </remarks>
+        public string EnvironmentName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the name of the application. 
+        /// </summary>
+        /// <remarks>
+        /// This property is automatically set by the host to the assembly containing the application entry point.
+        /// </remarks>
+        public string ApplicationName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the absolute path to the directory that contains the application content files.
+        /// </summary>
+        /// <remarks>
+        /// Must be a valid fully qualified path to a directory.
+        /// </remarks>
+        public string ContentRootPath { get; set; } = string.Empty;
     }
 }

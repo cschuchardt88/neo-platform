@@ -21,25 +21,25 @@
 // SERVICES
 
 using Neo.Configuration.Json;
-using System;
-using System.IO;
 
 namespace Neo.Configuration
 {
     /// <summary>
-    /// Configuration options for blockchain store backups.
+    /// Configuration options for application storage environment.
     /// </summary>
-    public class BlockchainBackupOptions : JsonModel
+    public class AppStorageOptions : JsonModel
     {
         /// <summary>
-        /// The directory path where backup files are stored.
-        /// Defaults to <c>data/backups</c> under the application base directory.
+        /// Gets or sets the absolute path to the directory that contains the application store files.
         /// </summary>
-        public string BackupPath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "backups");
+        /// <remarks>
+        /// Must be a valid fully qualified path to a directory.
+        /// </remarks>
+        public string StoreRootPath { get; set; } = string.Empty;
 
         /// <summary>
-        /// The maximum number of backup files to retain. Defaults to 3.
+        /// Whether to create the storage directories if they do not already exist.
         /// </summary>
-        public int MaxBackups { get; init; } = 3;
+        public bool CreateIfMissing { get; set; } = false;
     }
 }

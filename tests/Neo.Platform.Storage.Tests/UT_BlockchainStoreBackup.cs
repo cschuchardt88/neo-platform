@@ -41,7 +41,7 @@ namespace Neo.Platform.Storage.Tests
                 backup.Backup();
             }
 
-            var actualBackupDir = new DirectoryInfo(store.BackupOptions.BackupPath);
+            var actualBackupDir = new DirectoryInfo(store.BackupOptions.BackupRootPath);
 
             Assert.IsTrue(actualBackupDir.Exists);
             Assert.IsNotEmpty(actualBackupDir.EnumerateDirectories());
@@ -62,7 +62,7 @@ namespace Neo.Platform.Storage.Tests
 
                 backup.Backup();
 
-                var actualBackupDir = new DirectoryInfo(store.BackupOptions.BackupPath);
+                var actualBackupDir = new DirectoryInfo(store.BackupOptions.BackupRootPath);
 
                 Assert.IsTrue(actualBackupDir.Exists);
                 Assert.IsNotEmpty(actualBackupDir.EnumerateDirectories());

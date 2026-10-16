@@ -23,12 +23,12 @@
 using System.IO;
 using System.Threading;
 
-namespace Neo.Platform.Hosting.Factory
+namespace Neo.Core.Factory
 {
     /// <summary>
     /// Helper factory methods used when constructing Neo hosting environments.
     /// </summary>
-    internal static class NeoHostingFactory
+    public static class HostingEnvironmentFactory
     {
         private static readonly uint s_networkSeed = 810960196u; // DEV0 Magic Code
         private static readonly string s_globalString = "Global\\";
@@ -42,25 +42,17 @@ namespace Neo.Platform.Hosting.Factory
             => s_networkSeed & ~(0xfu << 24) | (index << 24);
 
         /// <summary>
-        /// Resolves a file path relative to a root directory when the path is not rooted.
+        /// Creates a named system mutex.
         /// </summary>
-        /// <param name="filename">File name or path to resolve.</param>
-        /// <param name="rootPath">Root directory used when <paramref name="filename"/> is relative.</param>
-        /// <returns>A <see cref="FileInfo"/> for the resolved path.</returns>
-        public static FileInfo ResolveFileName(string filename, string rootPath)
-        {
-            if (Path.IsPathRooted(filename))
-                return new(filename);
-            if (Path.IsPathRooted(rootPath) == false)
-                rootPath = Path.GetFullPath(rootPath);
-            return new(Path.Combine(rootPath, filename));
-        }
-
-        /// <summary>
-        /// Creates a named system mutex, generating a global random name when none is supplied.
-        /// </summary>
-        /// <param name="name">Optional mutex name; when null or empty a random global name is used.</param>
-        /// <returns>A newly created <see cref="Mutex"/> that is initially owned.</returns>
+        /// <param name="name">
+        /// Optional mutex name; when <see langword="null"/> or empty a random global name is used.
+        /// <para>
+        /// The name is case-sensitive and is prefixed with "Global\" to ensure the mutex is visible across all sessions on the machine.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A newly created <see cref="Mutex"/> that is initially owned.
+        /// </returns>
         public static Mutex CreateMutex(string? name = default)
         {
             if (string.IsNullOrEmpty(name))

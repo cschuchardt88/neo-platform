@@ -25,7 +25,7 @@ namespace Neo.Platform.Hosting
     /// <summary>
     /// Well-known hosting environment name strings for Neo platform hosts.
     /// </summary>
-    internal static class NeoHostingEnvironmentNames
+    public static class NeoHostingEnvironments
     {
         /// <summary>
         /// Local development network environment name.

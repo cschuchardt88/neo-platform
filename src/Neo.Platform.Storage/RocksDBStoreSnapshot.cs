@@ -35,7 +35,7 @@ namespace Neo.Platform.Storage
     /// <summary>
     /// Point-in-time RocksDB snapshot that stages writes in a batch until <see cref="Commit"/>.
     /// </summary>
-    public class BlockchainStoreSnapshot : IEnumerable<KeyValuePair<byte[], byte[]>>, IStoreSnapshot
+    public class RocksDBStoreSnapshot : IEnumerable<KeyValuePair<byte[], byte[]>>, IStoreSnapshot
     {
         /// <summary>
         /// Gets the store that produced this snapshot.
@@ -57,7 +57,7 @@ namespace Neo.Platform.Storage
         /// <param name="store">The parent store associated with this snapshot.</param>
         /// <param name="db">The open RocksDB database.</param>
         /// <param name="loggerFactory">Optional logger factory. When omitted, a null logger is used.</param>
-        public BlockchainStoreSnapshot(
+        public RocksDBStoreSnapshot(
             IStore store,
             RocksDb db,
             ILoggerFactory? loggerFactory = default)
@@ -65,7 +65,7 @@ namespace Neo.Platform.Storage
             _store = store;
             _db = db;
             _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
-            _logger = _loggerFactory.CreateLogger<BlockchainStoreSnapshot>();
+            _logger = _loggerFactory.CreateLogger<RocksDBStoreSnapshot>();
 
             _snapshot = _db.NewSnapshot();
             _readOptions = new();
@@ -104,9 +104,7 @@ namespace Neo.Platform.Storage
         /// <returns><see langword="true"/> if the key exists; otherwise, <see langword="false"/>.</returns>
         public bool ContainsKey(ReadOnlySpan<byte> key)
         {
-            if (_db.KeyMayExist(key))
-                return TryGet(key, out _);
-            return false;
+            return _db.KeyMayExist(key) && TryGet(key, out _);
         }
 
         /// <summary>
@@ -134,7 +132,7 @@ namespace Neo.Platform.Storage
             if (_logger.IsEnabled(logLevel))
                 _logger.LogSnapshotMessage(logLevel, "Creating snapshot of the snapshot.");
 
-            return new BlockchainStoreSnapshot(this, _db, _loggerFactory);
+            return new RocksDBStoreSnapshot(this, _db, _loggerFactory);
         }
 
         /// <summary>
@@ -183,7 +181,11 @@ namespace Neo.Platform.Storage
         /// <returns>An enumerator over snapshot contents.</returns>
         public IEnumerator<KeyValuePair<byte[], byte[]>> GetEnumerator()
         {
-            using var iter = _db.NewIterator(_readOptions);
+            var loopReadOptions = new ReadOptions();
+            loopReadOptions.SetDeadlineAfter(TimeSpan.FromSeconds(5)); // Set a deadline of 5 seconds for the iterator operations
+            loopReadOptions.AsyncIo = true; // Enable asynchronous I/O for the iterator
+            loopReadOptions.AutoReadaheadSize = true;
+            using var iter = _db.NewIterator(loopReadOptions);
             for (iter.SeekToFirst(); iter.IsValid(); iter.Next())
                 yield return new(iter.KeyToArray(), iter.ValueToArray());
         }

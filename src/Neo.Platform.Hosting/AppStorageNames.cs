@@ -25,24 +25,24 @@ using Neo.Configuration;
 namespace Neo.Platform.Hosting
 {
     /// <summary>
-    /// Configuration key names for blockchain store and backup options.
+    /// Configuration key names for application store and backup options.
     /// </summary>
-    public static class BlockchainStoreNames
+    public static class AppStorageNames
     {
         /// <summary>
         /// The root configuration section for store settings.
         /// </summary>
-        public static readonly string SectionKey = "Store";
+        public static readonly string SectionKey = "Storage";
 
         /// <summary>
-        /// Configuration key for <see cref="BlockchainStoreOptions.DatabasePath"/>.
+        /// Configuration key for <see cref="AppStorageOptions.StoreRootPath"/>.
         /// </summary>
-        public static readonly string DatabasePathKey = $"{SectionKey}:{nameof(BlockchainStoreOptions.DatabasePath)}";
+        public static readonly string StoreRootPathKey = $"{SectionKey}:{nameof(AppStorageOptions.StoreRootPath)}";
 
         /// <summary>
-        /// Configuration key for <see cref="BlockchainStoreOptions.CreateIfMissing"/>.
+        /// Configuration key for <see cref="AppStorageOptions.CreateIfMissing"/>.
         /// </summary>
-        public static readonly string CreateIfMissingKey = $"{SectionKey}:{nameof(BlockchainStoreOptions.CreateIfMissing)}";
+        public static readonly string CreateIfMissingKey = $"{SectionKey}:{nameof(AppStorageOptions.CreateIfMissing)}";
 
         /// <summary>
         /// Configuration section for store backup settings.
@@ -50,13 +50,13 @@ namespace Neo.Platform.Hosting
         public static readonly string BackupSectionKey = $"{SectionKey}:Backup";
 
         /// <summary>
-        /// Configuration key for <see cref="BlockchainBackupOptions.BackupPath"/>.
+        /// Configuration key for <see cref="AppStorageBackupOptions.BackupRootPath"/>.
         /// </summary>
-        public static readonly string BackupPathKey = $"{BackupSectionKey}:{nameof(BlockchainBackupOptions.BackupPath)}";
+        public static readonly string BackupRootPathKey = $"{BackupSectionKey}:{nameof(AppStorageBackupOptions.BackupRootPath)}";
 
         /// <summary>
-        /// Configuration key for <see cref="BlockchainBackupOptions.MaxBackups"/>.
+        /// Configuration key for <see cref="AppStorageBackupOptions.MaxBackups"/>.
         /// </summary>
-        public static readonly string MaxBackupsKey = $"{BackupSectionKey}:{nameof(BlockchainBackupOptions.MaxBackups)}";
+        public static readonly string MaxBackupsKey = $"{BackupSectionKey}:{nameof(AppStorageBackupOptions.MaxBackups)}";
     }
 }

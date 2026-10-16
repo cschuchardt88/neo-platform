@@ -33,38 +33,41 @@ namespace Neo.Platform.Storage.Tests
 
         private static readonly TestStorePool s_storePool = new();
 
-        private readonly ConcurrentDictionary<string, BlockchainStore> _store = [];
+        private readonly ConcurrentDictionary<string, RocksDBStore> _store = [];
 
-        public BlockchainStore Rent()
+        public RocksDBStore Rent()
         {
-            var storeOptions = Options.Create(new BlockchainStoreOptions()
+            var storeOptions = Options.Create(new RocksDBStorageOptions()
             {
-                DatabasePath = Path.Combine(Path.GetRandomFileName()),
+                StoreRootPath = Path.Combine(Path.GetRandomFileName()),
             });
 
-            var backupOptions = Options.Create(new BlockchainBackupOptions()
+            var backupOptions = Options.Create(new RocksDBStorageBackupOptions()
             {
-                BackupPath = Path.Combine(Path.GetRandomFileName()),
+                BackupRootPath = Path.Combine(Path.GetRandomFileName()),
                 MaxBackups = 3,
             });
 
-            var store = new BlockchainStore(storeOptions, backupOptions, TestUtilities.TraceLoggerFactory);
+            var store = new RocksDBStore(
+                storeOptions,
+                backupOptions,
+                TestUtilities.TraceLoggerFactory);
 
-            _store.TryAdd(storeOptions.Value.DatabasePath, store);
+            _store.TryAdd(storeOptions.Value.StoreRootPath, store);
 
             return store;
         }
 
-        public void Return(BlockchainStore store)
+        public void Return(RocksDBStore store)
         {
-            if (_store.TryRemove(store.StoreOptions.DatabasePath, out var value))
+            if (_store.TryRemove(store.StoreOptions.StoreRootPath, out var value))
             {
                 value.Dispose();
 
-                new DirectoryInfo(store.StoreOptions.DatabasePath)
+                new DirectoryInfo(store.StoreOptions.StoreRootPath)
                     .Delete(true);
 
-                var backupDir = new DirectoryInfo(store.BackupOptions.BackupPath);
+                var backupDir = new DirectoryInfo(store.BackupOptions.BackupRootPath);
 
                 if (backupDir.Exists)
                     backupDir.Delete(true);

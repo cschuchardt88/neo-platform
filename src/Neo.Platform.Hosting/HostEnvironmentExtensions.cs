@@ -39,7 +39,7 @@ namespace Neo.Platform.Hosting
         public static bool IsLocalNet(this IHostEnvironment hostEnvironment)
         {
             ArgumentNullException.ThrowIfNull(hostEnvironment, nameof(hostEnvironment));
-            return hostEnvironment.IsEnvironment(NeoHostingEnvironmentNames.LocalNet);
+            return hostEnvironment.IsEnvironment(NeoHostingEnvironments.LocalNet);
         }
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace Neo.Platform.Hosting
         public static bool IsTestNet(this IHostEnvironment hostEnvironment)
         {
             ArgumentNullException.ThrowIfNull(hostEnvironment, nameof(hostEnvironment));
-            return hostEnvironment.IsEnvironment(NeoHostingEnvironmentNames.TestNet);
+            return hostEnvironment.IsEnvironment(NeoHostingEnvironments.TestNet);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Neo.Platform.Hosting
         public static bool IsMainNet(this IHostEnvironment hostEnvironment)
         {
             ArgumentNullException.ThrowIfNull(hostEnvironment, nameof(hostEnvironment));
-            return hostEnvironment.IsEnvironment(NeoHostingEnvironmentNames.MainNet);
+            return hostEnvironment.IsEnvironment(NeoHostingEnvironments.MainNet);
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace Neo.Platform.Hosting
         public static bool IsPrivateNet(this IHostEnvironment hostEnvironment)
         {
             ArgumentNullException.ThrowIfNull(hostEnvironment, nameof(hostEnvironment));
-            return hostEnvironment.IsEnvironment(NeoHostingEnvironmentNames.PrivateNet);
+            return hostEnvironment.IsEnvironment(NeoHostingEnvironments.PrivateNet);
         }
     }
 }

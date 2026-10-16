@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Neo.Platform.CLI": {
-      "commandName": "Project",
-      "commandLineArgs": "show"
+      "commandName": "Project"
     }
   }
 }

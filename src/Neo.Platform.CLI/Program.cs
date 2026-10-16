@@ -34,7 +34,7 @@ namespace Neo.Platform.CLI
         {
             var rootCommand = new ProgramRootCommand();
             var cmd = new PlatformCommandLineBuilder(rootCommand, args)
-                .UseHost(DefaultNeoBuildHostFactory, builder =>
+                .UseHost(DefaultNeoHostBuilderFactory, builder =>
                 {
                     //builder.UseCommandAction<ProgramRootCommand, EmptyHandler>();
                     builder.UseCommandAction<ShowCommand, ShowCommand.Handler>();
@@ -46,7 +46,7 @@ namespace Neo.Platform.CLI
             return cmd.InvokeAsync();
         }
 
-        private static IHostBuilder DefaultNeoBuildHostFactory(string[] args)
+        private static IHostBuilder DefaultNeoHostBuilderFactory(string[] args)
             => new HostBuilder()
             .UseNeoPlatformConfiguration();
     }

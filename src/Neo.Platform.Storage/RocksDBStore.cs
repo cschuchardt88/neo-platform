@@ -38,31 +38,32 @@ namespace Neo.Platform.Storage
     /// <summary>
     /// RocksDB-backed blockchain key/value store implementing <see cref="IStore"/>.
     /// </summary>
-    public sealed class BlockchainStore : IEnumerable<KeyValuePair<byte[], byte[]>>, IStore
+    public sealed class RocksDBStore : IEnumerable<KeyValuePair<byte[], byte[]>>, IStore
     {
         /// <summary>
         /// Gets the store options used to open the database.
         /// </summary>
-        public BlockchainStoreOptions StoreOptions => _storeOptions.Value;
+        public RocksDBStorageOptions StoreOptions => _storeOptions.Value;
 
         /// <summary>
         /// Gets the backup options used when creating backups.
         /// </summary>
-        public BlockchainBackupOptions BackupOptions => _backupOptions.Value;
+        public RocksDBStorageBackupOptions BackupOptions => _backupOptions.Value;
 
         internal RocksDb Database => _db;
 
         private static readonly ColumnFamilyDescriptor[] s_columnFamilies =
         [
-            new(ColumnFamilyNames.Default),
+            new(RocksDBColumnFamilyNames.Default),
         ];
 
         private readonly Cache _blockSharedCache;
         private readonly FilterPolicy _bloomFilter;
+        private readonly BlockBasedTableOptions _blockBasedTable;
         private readonly RocksDb _db;
 
-        private readonly IOptions<BlockchainStoreOptions> _storeOptions;
-        private readonly IOptions<BlockchainBackupOptions> _backupOptions;
+        private readonly IOptions<RocksDBStorageOptions> _storeOptions;
+        private readonly IOptions<RocksDBStorageBackupOptions> _backupOptions;
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger _logger;
@@ -73,17 +74,22 @@ namespace Neo.Platform.Storage
         /// <param name="options">Store options, including the database path.</param>
         /// <param name="backupOptions">Optional backup options. When omitted, default backup options are used.</param>
         /// <param name="loggerFactory">Optional logger factory. When omitted, a null logger is used.</param>
-        public BlockchainStore(
-            IOptions<BlockchainStoreOptions> options,
-            IOptions<BlockchainBackupOptions>? backupOptions = default,
+        public RocksDBStore(
+            IOptions<RocksDBStorageOptions> options,
+            IOptions<RocksDBStorageBackupOptions>? backupOptions = default,
             ILoggerFactory? loggerFactory = default)
         {
             _storeOptions = options;
-            _backupOptions = backupOptions ?? Options.Create(new BlockchainBackupOptions());
-            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
-            _logger = _loggerFactory.CreateLogger<BlockchainStore>();
 
-            var dirInfo = new DirectoryInfo(_storeOptions.Value.DatabasePath);
+            ArgumentException.ThrowIfNullOrEmpty(_storeOptions.Value.StoreRootPath);
+            ArgumentOutOfRangeException.ThrowIfZero(_storeOptions.Value.MaxOpenFiles);
+            ArgumentOutOfRangeException.ThrowIfLessThan(_storeOptions.Value.MaxOpenFiles, -1);
+
+            _backupOptions = backupOptions ?? Options.Create(new RocksDBStorageBackupOptions());
+            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            _logger = _loggerFactory.CreateLogger<RocksDBStore>();
+
+            var dirInfo = new DirectoryInfo(_storeOptions.Value.StoreRootPath);
 
             if (dirInfo.Exists == false)
                 dirInfo.Create();
@@ -93,6 +99,7 @@ namespace Neo.Platform.Storage
 
             _blockSharedCache = Cache.CreateLru(ram);
             _bloomFilter = FilterPolicy.CreateBloomFull(10);
+            _blockBasedTable = CreateBlockTableOptions();
 
             var dbOptions = new DbOptions()
             {
@@ -128,19 +135,19 @@ namespace Neo.Platform.Storage
                 AtomicFlush = false,
 
                 // Files
-                MaxOpenFiles = -1, // Keep all files open
+                MaxOpenFiles = _storeOptions.Value.MaxOpenFiles, // Keep all files open
 
                 // WAL
                 WalRecoveryMode = WalRecoveryMode.PointInTime,
                 ManualWalFlush = false,
 
                 // Cache
-                BlockBasedTableFactory = CreateBlockTableOptions(),
+                BlockBasedTableFactory = _blockBasedTable,
             };
 
             dbOptions.OptimizeForPointLookup(64); // 64MB
 
-            _db = RocksDb.Open(dbOptions, _storeOptions.Value.DatabasePath, s_columnFamilies);
+            _db = RocksDb.Open(dbOptions, _storeOptions.Value.StoreRootPath, s_columnFamilies);
         }
 
         /// <summary>
@@ -151,6 +158,7 @@ namespace Neo.Platform.Storage
             _db.Dispose();
             _blockSharedCache.Dispose();
             _bloomFilter.Dispose();
+            _blockBasedTable.Dispose();
         }
 
         /// <summary>
@@ -179,7 +187,7 @@ namespace Neo.Platform.Storage
         /// </summary>
         /// <returns>An <see cref="IStoreBackup"/> bound to this database.</returns>
         public IStoreBackup CreateBackup()
-            => new BlockchainStoreBackup(_db, _backupOptions, _loggerFactory);
+            => new RocksDBStoreBackup(_db, _backupOptions, _loggerFactory);
 
         /// <summary>
         /// Creates a consistent snapshot of the current store state.
@@ -192,7 +200,7 @@ namespace Neo.Platform.Storage
             if (_logger.IsEnabled(logLevel))
                 _logger.LogSnapshotMessage(logLevel, "Creating snapshot of the store.");
 
-            return new BlockchainStoreSnapshot(this, _db, _loggerFactory);
+            return new RocksDBStoreSnapshot(this, _db, _loggerFactory);
         }
 
         /// <summary>
@@ -234,9 +242,7 @@ namespace Neo.Platform.Storage
         /// <returns><see langword="true"/> if the key exists; otherwise, <see langword="false"/>.</returns>
         public bool ContainsKey(ReadOnlySpan<byte> key)
         {
-            if (_db.KeyMayExist(key))
-                return TryGet(key, out _);
-            return false;
+            return _db.KeyMayExist(key) && TryGet(key, out _);
         }
 
         /// <summary>

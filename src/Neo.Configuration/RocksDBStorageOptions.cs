@@ -20,26 +20,16 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
-using System;
-using System.IO;
-
 namespace Neo.Configuration
 {
     /// <summary>
-    /// Configuration options for the blockchain store database.
+    /// Configuration options for the RocksDB database files.
     /// </summary>
-    public class BlockchainStoreOptions : JsonModel
+    public class RocksDBStorageOptions : AppStorageOptions
     {
         /// <summary>
-        /// The directory path of the blockchain database.
-        /// Defaults to <c>data/chain</c> under the application base directory.
+        /// Maximum number of open files. -1 = unlimited.
         /// </summary>
-        public string DatabasePath { get; init; } = Path.Combine(AppContext.BaseDirectory, "data", "chain");
-
-        /// <summary>
-        /// Whether to create the database if it does not already exist. Defaults to <see langword="true"/>.
-        /// </summary>
-        public bool CreateIfMissing { get; init; } = true;
+        public int MaxOpenFiles { get; set; }
     }
 }

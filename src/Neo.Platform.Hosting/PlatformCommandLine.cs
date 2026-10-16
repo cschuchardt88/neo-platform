@@ -32,9 +32,9 @@ namespace Neo.Platform.Hosting
     /// Runs a System.CommandLine parse result against a configured <see cref="IHost"/>.
     /// </summary>
     /// <param name="parseResult">The parsed command-line result to invoke.</param>
-    /// <param name="host">The host that supplies services for the application lifetime.</param>
+    /// <param name="hostBuilder">The host that supplies services for the application lifetime.</param>
     /// <param name="invocationConfiguration">Invocation settings for System.CommandLine.</param>
-    public sealed class PlatformCommandLine(ParseResult parseResult, IHost host, InvocationConfiguration invocationConfiguration)
+    public sealed class PlatformCommandLine(ParseResult parseResult, IHostBuilder hostBuilder, InvocationConfiguration invocationConfiguration)
     {
         /// <summary>
         /// Starts the host, invokes the command-line action, then stops the host.
@@ -46,12 +46,17 @@ namespace Neo.Platform.Hosting
         /// </returns>
         public async Task<int> InvokeAsync(CancellationToken cancellationToken = default)
         {
+            // Build the host
+            var host = hostBuilder.Build();
+
+            // Start the host
             await host.StartAsync(cancellationToken);
 
-            var exitCode = 0;
+            int exitCode;
 
             try
             {
+                // Invoke the command-line action
                 exitCode = await parseResult.InvokeAsync(invocationConfiguration, cancellationToken);
             }
             catch (Exception ex)
@@ -60,6 +65,7 @@ namespace Neo.Platform.Hosting
             }
             finally
             {
+                // Stop the host
                 await host.StopAsync(cancellationToken);
             }
 

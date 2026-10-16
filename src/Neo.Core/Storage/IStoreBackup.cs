@@ -30,21 +30,24 @@ namespace Neo.Core.Storage
     public interface IStoreBackup : IDisposable
     {
         /// <summary>
-        /// Creates a backup of the store.
+        /// Creates a new backup of the database.
         /// </summary>
         void Backup();
 
         /// <summary>
         /// Removes older backups, retaining the specified number of most recent ones.
         /// </summary>
-        /// <param name="numberOfBackupsToKeep">The number of backups to keep.</param>
-        void Purge(uint numberOfBackupsToKeep);
+        /// <param name="maxBackupsToKeep">The maximum number of most recent backups to retain.</param>
+        void Purge(uint maxBackupsToKeep);
+
+        // TODO: Add a method to verify the integrity of the latest backup before restoring it.
+        //       Add a method to restore with "backupId" and "restorePath" parameters, and optionally a "walPath" and "restoreOptions" parameter.
 
         /// <summary>
-        /// Restores the store from a backup path.
+        /// Restores the latest backup to the specified path.
         /// </summary>
-        /// <param name="restorePath">The path of the backup to restore.</param>
-        /// <param name="walPath">Optional write-ahead log path used during restore.</param>
-        void Restore(string restorePath, string? walPath = null);
+        /// <param name="restoreDir">The directory that will receive the restored database.</param>
+        /// <param name="walDir">Optional WAL directory. When omitted, <paramref name="restoreDir"/> is used.</param>
+        void Restore(string restoreDir, string? walDir = null); // TODO: Add new parameter that allows verification before restoring.
     }
 }

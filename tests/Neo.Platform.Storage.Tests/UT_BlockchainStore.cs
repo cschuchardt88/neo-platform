@@ -180,9 +180,15 @@ namespace Neo.Platform.Storage.Tests
 
             Assert.IsNotEmpty(actualCheckpointDir.EnumerateFiles());
 
-            actualCheckpointDir.Delete(true);
+            try
+            {
+                actualCheckpointDir.Delete(true);
+            }
+            finally
+            {
+                TestStorePool.Shared.Return(store);
+            }
 
-            TestStorePool.Shared.Return(store);
         }
     }
 }

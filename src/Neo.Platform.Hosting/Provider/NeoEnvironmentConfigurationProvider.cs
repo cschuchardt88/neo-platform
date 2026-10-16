@@ -22,8 +22,8 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Neo.Core.Factory;
 using Neo.Platform.Hosting.Configuration;
-using Neo.Platform.Hosting.Factory;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -49,11 +49,12 @@ namespace Neo.Platform.Hosting.Provider
             // Hosting Environment
             var contentRootDirectory = Environment.CurrentDirectory;
 
-            Data.Add(HostDefaults.EnvironmentKey, NeoHostingEnvironmentNames.LocalNet);
+            Data.Add(HostDefaults.EnvironmentKey, NeoHostingEnvironments.LocalNet);
             Data.Add(HostDefaults.ContentRootKey, contentRootDirectory);
 
             // Protocol Configuration
-            var protocolNetwork = NeoHostingFactory.GetDevNetwork(0);
+            var protocolNetworkIndex = RandomNumberFactory.NextByte();
+            var protocolNetwork = HostingEnvironmentFactory.GetDevNetwork(protocolNetworkIndex);
 
             Data.Add(ProtocolSettingNames.NetworkKey, $"{protocolNetwork:d}");
             Data.Add(ProtocolSettingNames.AddressVersionKey, "53");
@@ -64,12 +65,12 @@ namespace Neo.Platform.Hosting.Provider
             Data.Add(ProtocolSettingNames.InitialGasDistributionKey, "5200000000000000");
 
             // Store Configuration
-            Data.Add(BlockchainStoreNames.DatabasePathKey, Path.Combine(contentRootDirectory, "data", "chain"));
-            Data.Add(BlockchainStoreNames.CreateIfMissingKey, bool.TrueString);
+            Data.Add(AppStorageNames.StoreRootPathKey, Path.Combine(contentRootDirectory, "data", "app"));
+            Data.Add(AppStorageNames.CreateIfMissingKey, bool.TrueString);
 
             // Backup Configuration
-            Data.Add(BlockchainStoreNames.BackupPathKey, Path.Combine(contentRootDirectory, "data", "backups"));
-            Data.Add(BlockchainStoreNames.MaxBackupsKey, "3");
+            Data.Add(AppStorageNames.BackupRootPathKey, Path.Combine(contentRootDirectory, "data", "backups"));
+            Data.Add(AppStorageNames.MaxBackupsKey, "3");
 
             // ==================================
             // * End of Initial Defaults        *

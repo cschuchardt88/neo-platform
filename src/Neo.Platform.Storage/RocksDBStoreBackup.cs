@@ -34,22 +34,22 @@ using System.IO;
 namespace Neo.Platform.Storage
 {
     /// <summary>
-    /// RocksDB backup engine wrapper that implements <see cref="IStoreBackup"/>.
+    /// RocksDB backup engine wrapper that implements <seealso cref="IStoreBackup"/>.
     /// </summary>
-    public class BlockchainStoreBackup : IStoreBackup
+    public class RocksDBStoreBackup : IStoreBackup
     {
         /// <summary>
         /// Gets the backup options used by this instance.
         /// </summary>
-        public BlockchainBackupOptions BackupOptions => _backupOptions;
+        public RocksDBStorageBackupOptions BackupOptions => _backupOptions;
 
-        private readonly BlockchainBackupOptions _backupOptions;
+        private readonly RocksDBStorageBackupOptions _backupOptions;
 
         private readonly RocksDb _db;
         private readonly BackupEngine _backupEngine;
 
         private readonly ILoggerFactory _loggerFactory;
-        private readonly ILogger<BlockchainStoreBackup> _logger;
+        private readonly ILogger<RocksDBStoreBackup> _logger;
 
         /// <summary>
         /// Initializes a new backup engine for the specified database.
@@ -57,22 +57,22 @@ namespace Neo.Platform.Storage
         /// <param name="db">The open RocksDB instance to back up.</param>
         /// <param name="options">Backup options, including the backup directory path.</param>
         /// <param name="loggerFactory">Optional logger factory. When omitted, a null logger is used.</param>
-        public BlockchainStoreBackup(
+        public RocksDBStoreBackup(
             RocksDb db,
-            IOptions<BlockchainBackupOptions> options,
+            IOptions<RocksDBStorageBackupOptions> options,
             ILoggerFactory? loggerFactory = default)
         {
             _db = db;
             _backupOptions = options.Value;
             _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
-            _logger = _loggerFactory.CreateLogger<BlockchainStoreBackup>();
+            _logger = _loggerFactory.CreateLogger<RocksDBStoreBackup>();
 
-            var dirInfo = new DirectoryInfo(_backupOptions.BackupPath);
+            var dirInfo = new DirectoryInfo(_backupOptions.BackupRootPath);
 
             if (dirInfo.Exists == false)
                 dirInfo.Create();
 
-            _backupEngine = BackupEngine.Open(new(), _backupOptions.BackupPath);
+            _backupEngine = BackupEngine.Open(new(), _backupOptions.BackupRootPath);
         }
 
         /// <summary>
@@ -84,11 +84,10 @@ namespace Neo.Platform.Storage
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// Creates a new backup of the database.
-        /// </summary>
+        /// <inheritdoc />
         public void Backup()
         {
+            // TODO: use _backupOptions.MaxBackups to purge old backups after creating a new one.
             _backupEngine.CreateNewBackup(_db);
 
             var logLevel = LogLevel.Debug;
@@ -97,21 +96,16 @@ namespace Neo.Platform.Storage
                 _logger.LogBackupMessage(logLevel, $"Created new backup of the store.");
         }
 
-        /// <summary>
-        /// Restores the latest backup to the specified path.
-        /// </summary>
-        /// <param name="restorePath">The directory that will receive the restored database.</param>
-        /// <param name="walPath">
-        /// Optional WAL directory. When omitted, <paramref name="restorePath"/> is used.
-        /// </param>
+        /// <inheritdoc />
         /// <exception cref="ArgumentException">
-        /// <paramref name="restorePath"/> is <see langword="null"/> or empty.
+        /// <paramref name="restorePath"/> is <see langword="null"/> or <see cref="string.Empty"/>.
         /// </exception>
         /// <exception cref="DirectoryNotFoundException">
         /// <paramref name="restorePath"/> or <paramref name="walPath"/> does not exist.
         /// </exception>
         public void Restore(string restorePath, string? walPath = default)
         {
+            // TODO: Add new parameter that enables _backupEngine.VerifyBackup() before restoring.
             if (string.IsNullOrEmpty(restorePath))
                 throw new ArgumentException("Restore path cannot be null or empty.", nameof(restorePath));
 
@@ -137,20 +131,19 @@ namespace Neo.Platform.Storage
         /// </summary>
         /// <returns>An enumerable of backup metadata.</returns>
         public IEnumerable<BackupInfo> ListBackups()
+            // TODO: Add interface IEnumerable<BackupInfo> to RocksDBStoreBackup to expose the list of backups.
+            //       Also remove this method and use the interface instead.
             => _backupEngine.AsEnumerable();
 
-        /// <summary>
-        /// Deletes older backups, keeping only the newest backups up to the specified count.
-        /// </summary>
-        /// <param name="numberOfBackupsToKeep">The number of most recent backups to retain.</param>
-        public void Purge(uint numberOfBackupsToKeep)
+        /// <inheritdoc />
+        public void Purge(uint maxBackupsToKeep)
         {
-            _backupEngine.PurgeOldBackups(numberOfBackupsToKeep);
+            _backupEngine.PurgeOldBackups(maxBackupsToKeep);
 
             var logLevel = LogLevel.Debug;
 
             if (_logger.IsEnabled(logLevel))
-                _logger.LogRestoreMessage(logLevel, $"Purged old backups, keeping the latest {numberOfBackupsToKeep} backups.");
+                _logger.LogRestoreMessage(logLevel, $"Purged old backups, keeping the latest {maxBackupsToKeep} backups.");
         }
     }
 }

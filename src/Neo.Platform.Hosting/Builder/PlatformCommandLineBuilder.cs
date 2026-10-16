@@ -82,7 +82,7 @@ namespace Neo.Platform.Hosting.Builder
                     services.AddTransient(_ => parseResult);
                 });
 
-                _hostBuilder.UseNeoPlatformLifetime();
+                _hostBuilder.UseNeoPlatformConfiguration();
                 configure?.Invoke(_hostBuilder);
 
                 next(parseResult);
@@ -134,8 +134,8 @@ namespace Neo.Platform.Hosting.Builder
 
             BuildChain().Invoke(parseResults);
 
-            var host = (_hostBuilder ?? new HostBuilder()).Build();
-            return new(parseResults, host, InvocationConfiguration);
+            var hostBuilder = _hostBuilder ?? new HostBuilder();
+            return new(parseResults, hostBuilder, InvocationConfiguration);
         }
 
         private PlatformCommandLineNextDelegate BuildChain()

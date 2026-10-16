@@ -26,7 +26,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.EventLog;
 using Neo.Configuration;
-using Neo.Core;
 using Neo.Core.Types.Converter;
 using Neo.Platform.Hosting.Configuration;
 using Neo.Platform.Hosting.Logging;
@@ -82,7 +81,7 @@ namespace Neo.Platform.Hosting
         /// <remarks>
         /// Loads JSON configuration from the application base and content root (including environment-specific files),
         /// registers Neo platform logging, enables development service-provider validation in Development,
-        /// and applies <see cref="UseNeoPlatformLifetime"/> and <see cref="UseNeoPlatformOptions"/>.
+        /// and applies <see cref="UseNeoPlatformLifetime"/> and <see cref="UseNeoHostingEnvironmentOptions"/>.
         /// </remarks>
         public static IHostBuilder UseNeoPlatformConfiguration(this IHostBuilder builder)
         {
@@ -171,7 +170,7 @@ namespace Neo.Platform.Hosting
             );
 
             builder.UseNeoPlatformLifetime();
-            builder.UseNeoPlatformOptions();
+            builder.UseNeoHostingEnvironmentOptions();
 
             builder.ConfigureServices
             (
@@ -189,19 +188,51 @@ namespace Neo.Platform.Hosting
         }
 
         /// <summary>
-        /// Binds protocol settings from configuration and registers them as a singleton
-        /// <see cref="ProtocolSettings"/> service.
+        /// Binds host context configuration to options and registers them as a singleton service.
         /// </summary>
         /// <param name="builder">The host builder.</param>
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static IHostBuilder UseNeoPlatformOptions(this IHostBuilder builder)
+        public static IHostBuilder UseNeoHostingEnvironmentOptions(this IHostBuilder builder)
             => builder.ConfigureServices
             (
                 static (context, services) =>
                 {
+                    // Bind hosting environment settings from hosting environment and register as singleton service
+                    var hostEnvironmentOptions = new HostingEnvironmentOptions()
+                    {
+                        EnvironmentName = context.HostingEnvironment.EnvironmentName,
+                        ApplicationName = context.HostingEnvironment.ApplicationName,
+                        ContentRootPath = context.HostingEnvironment.ContentRootPath,
+                    };
+
+                    services.AddSingleton(hostEnvironmentOptions);
+
+                    // Bind protocol settings from configuration and register as singleton service
                     var protocolSettingsSection = context.Configuration.GetSection(ProtocolSettingNames.SectionKey);
                     var protocolSettingsOptions = protocolSettingsSection.Get<ProtocolSettingsOptions>();
-                    services.AddSingleton(protocolSettingsOptions?.ToObject() ?? ProtocolSettings.Default);
+
+                    if (protocolSettingsOptions is null)
+                        throw new NullReferenceException($"Binding the configuration instance \'{ProtocolSettingNames.SectionKey}\' to a new instance of type \'{nameof(ProtocolSettingsOptions)}\' has failed.");
+
+                    services.AddSingleton(protocolSettingsOptions.ToObject());
+
+                    // Bind blockchain store settings from configuration and register as singleton service
+                    var appStorageSection = context.Configuration.GetSection(AppStorageNames.SectionKey);
+                    var appStorageOptions = appStorageSection.Get<AppStorageOptions>();
+
+                    if (appStorageOptions is null)
+                        throw new NullReferenceException($"Binding the configuration instance \'{AppStorageNames.SectionKey}\' to a new instance of type \'{nameof(AppStorageOptions)}\' has failed.");
+
+                    services.AddSingleton(appStorageOptions);
+
+                    // Bind blockchain backup settings from configuration and register as singleton service
+                    var appStorageBackupSection = context.Configuration.GetSection(AppStorageNames.BackupSectionKey);
+                    var appStorageBackupOptions = appStorageBackupSection.Get<AppStorageBackupOptions>();
+
+                    if (appStorageBackupOptions is null)
+                        throw new NullReferenceException($"Binding the configuration instance \'{AppStorageNames.BackupSectionKey}\' to a new instance of type \'{nameof(AppStorageBackupOptions)}\' has failed.");
+
+                    services.AddSingleton(appStorageBackupOptions);
                 }
             );
 
