@@ -38,6 +38,7 @@ namespace Neo.Platform.CLI
                 {
                     //builder.UseCommandAction<ProgramRootCommand, EmptyHandler>();
                     builder.UseCommandAction<ShowCommand, ShowCommand.Handler>();
+                    builder.UseNodeCommands();
                 })
                 .EnablePosixBundling()
                 .EnableDefaultExceptionHandler(false)

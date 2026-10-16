@@ -34,9 +34,42 @@ namespace Neo.Platform.CLI.Commands
         /// </summary>
         public ProgramRootCommand() : base("Neo Platform Command-line Tool")
         {
-            var showCommand = new ShowCommand();
-
-            Add(showCommand);
+            Add(new ShowCommand());
+            Add(new ExportCommand());
+            Add(new ImportCommand());
+            Add(new CreateCommand());
+            Add(new OpenCommand());
+            Add(new CloseCommand());
+            Add(new UpgradeCommand());
+            Add(new DeleteCommand());
+            Add(new ListCommand());
+            Add(new SignCommand());
+            Add(new VerifyCommand());
+            Add(new SendCommand());
+            Add(new CancelCommand());
+            Add(new ChangeCommand());
+            Add(new DeployCommand());
+            Add(new UpdateCommand());
+            Add(new InvokeCommand());
+            Add(new InvokeAbiCommand());
+            Add(new TransferCommand());
+            Add(new BalanceOfCommand());
+            Add(new NameCommand());
+            Add(new DecimalsCommand());
+            Add(new TotalSupplyCommand());
+            Add(new BroadcastCommand());
+            Add(new RelayCommand());
+            Add(new ConsoleCommandGroup());
+            Add(new InstallCommand());
+            Add(new ReinstallCommand());
+            Add(new UninstallCommand());
+            Add(new PluginsCommand());
+            Add(new ParseCommand());
+            Add(new RegisterCommand());
+            Add(new UnregisterCommand());
+            Add(new VoteCommand());
+            Add(new UnvoteCommand());
+            Add(new GetCommand());
         }
     }
 }
