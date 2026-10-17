@@ -41,7 +41,7 @@ namespace Neo.Platform.Hosting.Configuration
         /// <returns>The same <paramref name="builder"/> for chaining.</returns>
         public static IConfigurationBuilder AddNeoPlatformConfiguration(this IConfigurationBuilder builder, IEnumerable<KeyValuePair<string, string?>>? initialData = default)
         {
-            builder.Add(new NeoEnvironmentConfigurationSource() { InitialData = initialData, });
+            builder.Add(new NeoPlatformConfigurationSource() { InitialData = initialData, });
             return builder;
         }
     }

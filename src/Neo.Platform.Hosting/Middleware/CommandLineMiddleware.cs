@@ -20,14 +20,15 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using Neo.Platform.Hosting.Builder;
 using System.CommandLine;
 
 namespace Neo.Platform.Hosting.Middleware
 {
     /// <summary>
-    /// Continues the <see cref="Builder.PlatformCommandLineBuilder"/> middleware chain
+    /// Continues the <see cref="NeoPlatformCommandLineBuilder"/> middleware chain
     /// with the current <see cref="ParseResult"/>.
     /// </summary>
     /// <param name="parseResult">The parse result to pass to the next middleware.</param>
-    public delegate void PlatformCommandLineNextDelegate(ParseResult parseResult);
+    public delegate void NeoPlatformCommandLineNextDelegate(ParseResult parseResult);
 }

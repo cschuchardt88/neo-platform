@@ -111,5 +111,12 @@ namespace Neo.Core
 
             return isLocalDateTime ? dateTimeOffset.LocalDateTime : dateTimeOffset.UtcDateTime;
         }
+
+        public static Exception GetRootException(Exception exception)
+        {
+            while (exception.InnerException is not null)
+                exception = exception.InnerException;
+            return exception;
+        }
     }
 }

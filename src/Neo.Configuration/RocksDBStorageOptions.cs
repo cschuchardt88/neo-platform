@@ -25,7 +25,7 @@ namespace Neo.Configuration
     /// <summary>
     /// Configuration options for the RocksDB database files.
     /// </summary>
-    public class RocksDBStorageOptions : AppStorageOptions
+    public class RocksDBStorageOptions : PlatformStorageOptions
     {
         /// <summary>
         /// Maximum number of open files. -1 = unlimited.

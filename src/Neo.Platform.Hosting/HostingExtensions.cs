@@ -76,13 +76,13 @@ namespace Neo.Platform.Hosting
         /// <summary>
         /// Configures Neo platform host defaults for configuration, logging, lifetime, options, and type converters.
         /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
         /// <remarks>
         /// Loads JSON configuration from the application base and content root (including environment-specific files),
         /// registers Neo platform logging, enables development service-provider validation in Development,
-        /// and applies <see cref="UseNeoPlatformLifetime"/> and <see cref="UseNeoHostingEnvironmentOptions"/>.
+        /// and applies <see cref="UseNeoPlatformLifetime"/> and <see cref="UseNeoPlatformOptions"/>.
         /// </remarks>
+        /// <param name="builder">The extension method argument.</param>
+        /// <returns>The <see cref="IHostBuilder"/> so that additional calls can be chained.</returns>
         public static IHostBuilder UseNeoPlatformConfiguration(this IHostBuilder builder)
         {
             // Host Configuration
@@ -137,7 +137,7 @@ namespace Neo.Platform.Hosting
                     }
 
                     logging.AddConfiguration(context.Configuration.GetSection("Logging"));
-                    logging.AddNeoPlatform();
+                    logging.AddNeoPlatformLog();
 #if DEBUG
                     logging.AddDebug();
 #endif
@@ -170,7 +170,7 @@ namespace Neo.Platform.Hosting
             );
 
             builder.UseNeoPlatformLifetime();
-            builder.UseNeoHostingEnvironmentOptions();
+            builder.UseNeoPlatformOptions();
 
             builder.ConfigureServices
             (
@@ -180,7 +180,7 @@ namespace Neo.Platform.Hosting
                 }
             );
 
-            // IConfiguration.Get<T>() Converting
+            // Adds type formatting for IConfiguration.Get<T>()
             TypeDescriptor.AddAttributes(typeof(IPAddress), new TypeConverterAttribute(typeof(IPAddressTypeConverter)));
             TypeDescriptor.AddAttributes(typeof(IPEndPoint), new TypeConverterAttribute(typeof(IPEndPointTypeConverter)));
 
@@ -190,22 +190,22 @@ namespace Neo.Platform.Hosting
         /// <summary>
         /// Binds host context configuration to options and registers them as a singleton service.
         /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static IHostBuilder UseNeoHostingEnvironmentOptions(this IHostBuilder builder)
+        /// <param name="builder">The extension method argument.</param>
+        /// <returns>The <see cref="IHostBuilder"/> so that additional calls can be chained.</returns>
+        public static IHostBuilder UseNeoPlatformOptions(this IHostBuilder builder)
             => builder.ConfigureServices
             (
                 static (context, services) =>
                 {
-                    // Bind hosting environment settings from hosting environment and register as singleton service
-                    var hostEnvironmentOptions = new HostingEnvironmentOptions()
+                    // Bind platform environment settings from hosting environment and register as singleton service
+                    var platformEnvironmentOptions = new PlatformEnvironmentOptions()
                     {
                         EnvironmentName = context.HostingEnvironment.EnvironmentName,
                         ApplicationName = context.HostingEnvironment.ApplicationName,
                         ContentRootPath = context.HostingEnvironment.ContentRootPath,
                     };
 
-                    services.AddSingleton(hostEnvironmentOptions);
+                    services.AddSingleton(platformEnvironmentOptions);
 
                     // Bind protocol settings from configuration and register as singleton service
                     var protocolSettingsSection = context.Configuration.GetSection(ProtocolSettingNames.SectionKey);
@@ -216,37 +216,38 @@ namespace Neo.Platform.Hosting
 
                     services.AddSingleton(protocolSettingsOptions.ToObject());
 
-                    // Bind blockchain store settings from configuration and register as singleton service
-                    var appStorageSection = context.Configuration.GetSection(AppStorageNames.SectionKey);
-                    var appStorageOptions = appStorageSection.Get<AppStorageOptions>();
+                    // Bind platform store settings from configuration and register as singleton service
+                    var platformStorageSection = context.Configuration.GetSection(PlatformStorageNames.SectionKey);
+                    var platformStorageOptions = platformStorageSection.Get<PlatformStorageOptions>();
 
-                    if (appStorageOptions is null)
-                        throw new NullReferenceException($"Binding the configuration instance \'{AppStorageNames.SectionKey}\' to a new instance of type \'{nameof(AppStorageOptions)}\' has failed.");
+                    if (platformStorageOptions is null)
+                        throw new NullReferenceException($"Binding the configuration instance \'{PlatformStorageNames.SectionKey}\' to a new instance of type \'{nameof(PlatformStorageOptions)}\' has failed.");
 
-                    services.AddSingleton(appStorageOptions);
+                    services.AddSingleton(platformStorageOptions);
 
-                    // Bind blockchain backup settings from configuration and register as singleton service
-                    var appStorageBackupSection = context.Configuration.GetSection(AppStorageNames.BackupSectionKey);
-                    var appStorageBackupOptions = appStorageBackupSection.Get<AppStorageBackupOptions>();
+                    // Bind platform backup settings from configuration and register as singleton service
+                    var platformStorageBackupSection = context.Configuration.GetSection(PlatformStorageNames.BackupSectionKey);
+                    var platformStorageBackupOptions = platformStorageBackupSection.Get<PlatformStorageBackupOptions>();
 
-                    if (appStorageBackupOptions is null)
-                        throw new NullReferenceException($"Binding the configuration instance \'{AppStorageNames.BackupSectionKey}\' to a new instance of type \'{nameof(AppStorageBackupOptions)}\' has failed.");
+                    if (platformStorageBackupOptions is null)
+                        throw new NullReferenceException($"Binding the configuration instance \'{PlatformStorageNames.BackupSectionKey}\' to a new instance of type \'{nameof(PlatformStorageBackupOptions)}\' has failed.");
 
-                    services.AddSingleton(appStorageBackupOptions);
+                    services.AddSingleton(platformStorageBackupOptions);
                 }
             );
 
         /// <summary>
         /// Registers <see cref="NeoPlatformLifetime"/> as the host lifetime and optionally configures its options.
         /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <param name="configure">Optional callback that configures <see cref="NeoPlatformLifetimeOptions"/>.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
+        /// <param name="builder">The extension method argument.</param>
+        /// <param name="configure">A delegate to configure the <see cref="NeoPlatformLifetimeOptions"/>.</param>
+        /// <returns>The <see cref="IHostBuilder"/> so that additional calls can be chained.</returns>
         public static IHostBuilder UseNeoPlatformLifetime(this IHostBuilder builder, Action<NeoPlatformLifetimeOptions>? configure = default)
             => builder.ConfigureServices(
                 services =>
                 {
                     services.AddSingleton<IHostLifetime, NeoPlatformLifetime>();
+
                     if (configure is not null)
                         services.Configure(configure);
                 });

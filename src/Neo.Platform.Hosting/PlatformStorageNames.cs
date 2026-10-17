@@ -25,9 +25,9 @@ using Neo.Configuration;
 namespace Neo.Platform.Hosting
 {
     /// <summary>
-    /// Configuration key names for application store and backup options.
+    /// Configuration key names for platform store and backup options.
     /// </summary>
-    public static class AppStorageNames
+    public static class PlatformStorageNames
     {
         /// <summary>
         /// The root configuration section for store settings.
@@ -35,14 +35,14 @@ namespace Neo.Platform.Hosting
         public static readonly string SectionKey = "Storage";
 
         /// <summary>
-        /// Configuration key for <see cref="AppStorageOptions.StoreRootPath"/>.
+        /// Configuration key for <see cref="PlatformStorageOptions.StoreRootPath"/>.
         /// </summary>
-        public static readonly string StoreRootPathKey = $"{SectionKey}:{nameof(AppStorageOptions.StoreRootPath)}";
+        public static readonly string StoreRootPathKey = $"{SectionKey}:{nameof(PlatformStorageOptions.StoreRootPath)}";
 
         /// <summary>
-        /// Configuration key for <see cref="AppStorageOptions.CreateIfMissing"/>.
+        /// Configuration key for <see cref="PlatformStorageOptions.CreateIfMissing"/>.
         /// </summary>
-        public static readonly string CreateIfMissingKey = $"{SectionKey}:{nameof(AppStorageOptions.CreateIfMissing)}";
+        public static readonly string CreateIfMissingKey = $"{SectionKey}:{nameof(PlatformStorageOptions.CreateIfMissing)}";
 
         /// <summary>
         /// Configuration section for store backup settings.
@@ -50,13 +50,13 @@ namespace Neo.Platform.Hosting
         public static readonly string BackupSectionKey = $"{SectionKey}:Backup";
 
         /// <summary>
-        /// Configuration key for <see cref="AppStorageBackupOptions.BackupRootPath"/>.
+        /// Configuration key for <see cref="PlatformStorageBackupOptions.BackupRootPath"/>.
         /// </summary>
-        public static readonly string BackupRootPathKey = $"{BackupSectionKey}:{nameof(AppStorageBackupOptions.BackupRootPath)}";
+        public static readonly string BackupRootPathKey = $"{BackupSectionKey}:{nameof(PlatformStorageBackupOptions.BackupRootPath)}";
 
         /// <summary>
-        /// Configuration key for <see cref="AppStorageBackupOptions.MaxBackups"/>.
+        /// Configuration key for <see cref="PlatformStorageBackupOptions.MaxBackups"/>.
         /// </summary>
-        public static readonly string MaxBackupsKey = $"{BackupSectionKey}:{nameof(AppStorageBackupOptions.MaxBackups)}";
+        public static readonly string MaxBackupsKey = $"{BackupSectionKey}:{nameof(PlatformStorageBackupOptions.MaxBackups)}";
     }
 }

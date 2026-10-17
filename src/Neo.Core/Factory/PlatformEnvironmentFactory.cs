@@ -26,9 +26,9 @@ using System.Threading;
 namespace Neo.Core.Factory
 {
     /// <summary>
-    /// Helper factory methods used when constructing Neo hosting environments.
+    /// Helper factory methods used when constructing Neo platform environments.
     /// </summary>
-    public static class HostingEnvironmentFactory
+    public static class PlatformEnvironmentFactory
     {
         private static readonly uint s_networkSeed = 810960196u; // DEV0 Magic Code
         private static readonly string s_globalString = "Global\\";

@@ -31,14 +31,14 @@ using System.IO;
 
 namespace Neo.Platform.Hosting.Provider
 {
-    internal sealed class NeoEnvironmentConfigurationProvider : ConfigurationProvider
+    internal sealed class NeoPlatformConfigurationProvider : ConfigurationProvider
     {
         private const string PREFIX = "NEO";
 
-        private readonly NeoEnvironmentConfigurationSource _source;
+        private readonly NeoPlatformConfigurationSource _source;
 
-        public NeoEnvironmentConfigurationProvider(
-            NeoEnvironmentConfigurationSource source)
+        public NeoPlatformConfigurationProvider(
+            NeoPlatformConfigurationSource source)
         {
             _source = source;
 
@@ -54,7 +54,7 @@ namespace Neo.Platform.Hosting.Provider
 
             // Protocol Configuration
             var protocolNetworkIndex = RandomNumberFactory.NextByte();
-            var protocolNetwork = HostingEnvironmentFactory.GetDevNetwork(protocolNetworkIndex);
+            var protocolNetwork = PlatformEnvironmentFactory.GetDevNetwork(protocolNetworkIndex);
 
             Data.Add(ProtocolSettingNames.NetworkKey, $"{protocolNetwork:d}");
             Data.Add(ProtocolSettingNames.AddressVersionKey, "53");
@@ -65,12 +65,12 @@ namespace Neo.Platform.Hosting.Provider
             Data.Add(ProtocolSettingNames.InitialGasDistributionKey, "5200000000000000");
 
             // Store Configuration
-            Data.Add(AppStorageNames.StoreRootPathKey, Path.Combine(contentRootDirectory, "data", "app"));
-            Data.Add(AppStorageNames.CreateIfMissingKey, bool.TrueString);
+            Data.Add(PlatformStorageNames.StoreRootPathKey, Path.Combine(contentRootDirectory, "data", "app"));
+            Data.Add(PlatformStorageNames.CreateIfMissingKey, bool.TrueString);
 
             // Backup Configuration
-            Data.Add(AppStorageNames.BackupRootPathKey, Path.Combine(contentRootDirectory, "data", "backups"));
-            Data.Add(AppStorageNames.MaxBackupsKey, "3");
+            Data.Add(PlatformStorageNames.BackupRootPathKey, Path.Combine(contentRootDirectory, "data", "backups"));
+            Data.Add(PlatformStorageNames.MaxBackupsKey, "3");
 
             // ==================================
             // * End of Initial Defaults        *

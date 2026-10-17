@@ -20,26 +20,18 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
-using Neo.Configuration.Json;
+using System.CommandLine;
+using System.CommandLine.Parsing;
+using System.Linq;
 
-namespace Neo.Configuration
+namespace Neo.Platform.Hosting.Extensions
 {
-    /// <summary>
-    /// Configuration options for application storage environment.
-    /// </summary>
-    public class AppStorageOptions : JsonModel
+    internal static class ParseErrorActionExtensions
     {
         /// <summary>
-        /// Gets or sets the absolute path to the directory that contains the application store files.
+        /// Determines whether the given <see cref="ParseResult"/> should suppress status messages.
         /// </summary>
-        /// <remarks>
-        /// Must be a valid fully qualified path to a directory.
-        /// </remarks>
-        public string StoreRootPath { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Whether to create the storage directories if they do not already exist.
-        /// </summary>
-        public bool CreateIfMissing { get; set; } = false;
+        public static bool SuppressStatusMessages(this ParseResult parseResult)
+            => parseResult.Errors.Count > 0 || parseResult.Tokens.Any(token => token.Type != TokenType.Command);
     }
 }

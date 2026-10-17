@@ -25,9 +25,9 @@ using Neo.Configuration.Json;
 namespace Neo.Configuration
 {
     /// <summary>
-    /// Configuration options for a running host environment application.
+    /// Configuration options for a running platform environment application.
     /// </summary>
-    public class HostingEnvironmentOptions : JsonModel
+    public class PlatformEnvironmentOptions : JsonModel
     {
         /// <summary>
         /// Gets or sets the name of the environment.

@@ -29,7 +29,7 @@ namespace Neo.Platform.Hosting.Configuration
     /// <summary>
     /// Configuration source that supplies Neo environment-related settings.
     /// </summary>
-    internal class NeoEnvironmentConfigurationSource : IConfigurationSource
+    internal class NeoPlatformConfigurationSource : IConfigurationSource
     {
         /// <summary>
         /// Optional initial key/value pairs merged into the configuration provider.
@@ -40,8 +40,8 @@ namespace Neo.Platform.Hosting.Configuration
         /// Builds a configuration provider for this source.
         /// </summary>
         /// <param name="builder">The configuration builder.</param>
-        /// <returns>A <see cref="NeoEnvironmentConfigurationProvider"/> instance.</returns>
+        /// <returns>A <see cref="NeoPlatformConfigurationProvider"/> instance.</returns>
         public IConfigurationProvider Build(IConfigurationBuilder builder)
-            => new NeoEnvironmentConfigurationProvider(this);
+            => new NeoPlatformConfigurationProvider(this);
     }
 }

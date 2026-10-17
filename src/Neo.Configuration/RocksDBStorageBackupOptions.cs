@@ -25,7 +25,7 @@ namespace Neo.Configuration
     /// <summary>
     /// Configuration options for RocksDB database backup files.
     /// </summary>
-    public class RocksDBStorageBackupOptions : AppStorageBackupOptions
+    public class RocksDBStorageBackupOptions : PlatformStorageBackupOptions
     {
 
     }

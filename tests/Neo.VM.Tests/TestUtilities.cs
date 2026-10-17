@@ -39,7 +39,7 @@ namespace Neo.VM.Tests
             var manger = new ConfigurationManager();
             logging.AddConfiguration(manger);
             logging.ClearProviders();
-            logging.AddNeoPlatform();
+            logging.AddNeoPlatformLog();
             logging.SetMinimumLevel(LogLevel.Trace);
         });
 
@@ -58,7 +58,7 @@ namespace Neo.VM.Tests
                         var manger = new ConfigurationManager();
                         logging.AddConfiguration(manger);
                         logging.ClearProviders();
-                        logging.AddNeoPlatform(); // Custom logger for our platform (file, debugger, console, etc)
+                        logging.AddNeoPlatformLog(); // Custom logger for our platform (file, debugger, console, etc)
                         logging.SetMinimumLevel(LogLevel.Trace);
                     });
 

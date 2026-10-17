@@ -22,6 +22,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Neo.Platform.Hosting.Extensions;
 using Neo.Platform.Hosting.Middleware;
 using System;
 using System.Collections.Generic;
@@ -40,16 +41,16 @@ namespace Neo.Platform.Hosting.Builder
     /// Command-line arguments to parse when <see cref="Build"/> is called.
     /// When <see langword="null"/>, an empty argument list is used.
     /// </param>
-    public class PlatformCommandLineBuilder(Command? rootCommand = default, string[]? args = default)
+    public class NeoPlatformCommandLineBuilder(Command? rootCommand = default, string[]? args = default)
     {
-        internal Command Command { get; } = rootCommand ?? new RootCommand();
+        internal Command Command { get; } = rootCommand ?? new Command(RootCommand.ExecutableName);
         internal ParserConfiguration ParserConfiguration { get; } = new();
         internal InvocationConfiguration InvocationConfiguration { get; } = new();
 
-        private readonly List<Action<ParseResult, PlatformCommandLineNextDelegate>> _middleware = [];
+        private readonly List<Action<ParseResult, NeoPlatformCommandLineNextDelegate>> _middleware = [];
         private IHostBuilder? _hostBuilder;
 
-        internal void AddMiddleware(Action<ParseResult, PlatformCommandLineNextDelegate> middleware)
+        internal void AddMiddleware(Action<ParseResult, NeoPlatformCommandLineNextDelegate> middleware)
             => _middleware.Add(middleware);
 
         /// <summary>
@@ -65,15 +66,15 @@ namespace Neo.Platform.Hosting.Builder
         /// The middleware stores the <see cref="ParseResult"/> on the host builder properties,
         /// registers it for DI, and enables <see cref="HostingExtensions.UseNeoPlatformLifetime"/>.
         /// </remarks>
-        public PlatformCommandLineBuilder UseHost(
+        public NeoPlatformCommandLineBuilder UseHost(
             Func<string[], IHostBuilder>? hostBuilderFactory,
             Action<IHostBuilder>? configure = default)
         {
             AddMiddleware(async (parseResult, next) =>
             {
                 var argsRemaining = parseResult.UnmatchedTokens.ToArray();
-                _hostBuilder = hostBuilderFactory?.Invoke(argsRemaining) ??
-                    new HostBuilder();
+                _hostBuilder = hostBuilderFactory?.Invoke(argsRemaining)
+                    ?? new HostBuilder();
 
                 _hostBuilder.Properties[typeof(ParseResult)] = parseResult;
 
@@ -82,7 +83,9 @@ namespace Neo.Platform.Hosting.Builder
                     services.AddTransient(_ => parseResult);
                 });
 
-                _hostBuilder.UseNeoPlatformConfiguration();
+                _hostBuilder.UseNeoPlatformLifetime(
+                    lifetime => lifetime.SuppressStatusMessages = parseResult.SuppressStatusMessages());
+
                 configure?.Invoke(_hostBuilder);
 
                 next(parseResult);
@@ -96,7 +99,7 @@ namespace Neo.Platform.Hosting.Builder
         /// </summary>
         /// <param name="value"><see langword="true"/> to enable the handler; otherwise, <see langword="false"/>.</param>
         /// <returns>The same builder for chaining.</returns>
-        public PlatformCommandLineBuilder EnableDefaultExceptionHandler(bool value = true)
+        public NeoPlatformCommandLineBuilder EnableDefaultExceptionHandler(bool value = true)
         {
             InvocationConfiguration.EnableDefaultExceptionHandler = value;
             return this;
@@ -107,7 +110,7 @@ namespace Neo.Platform.Hosting.Builder
         /// </summary>
         /// <param name="timeout">The termination timeout.</param>
         /// <returns>The same builder for chaining.</returns>
-        public PlatformCommandLineBuilder SetProcessTerminationTimeout(TimeSpan timeout)
+        public NeoPlatformCommandLineBuilder SetProcessTerminationTimeout(TimeSpan timeout)
         {
             InvocationConfiguration.ProcessTerminationTimeout = timeout;
             return this;
@@ -118,7 +121,7 @@ namespace Neo.Platform.Hosting.Builder
         /// </summary>
         /// <param name="value"><see langword="true"/> to enable bundling; otherwise, <see langword="false"/>.</param>
         /// <returns>The same builder for chaining.</returns>
-        public PlatformCommandLineBuilder EnablePosixBundling(bool value = true)
+        public NeoPlatformCommandLineBuilder EnablePosixBundling(bool value = true)
         {
             ParserConfiguration.EnablePosixBundling = value;
             return this;
@@ -127,20 +130,20 @@ namespace Neo.Platform.Hosting.Builder
         /// <summary>
         /// Parses the configured arguments, runs middleware, builds the host, and returns a runnable command line.
         /// </summary>
-        /// <returns>A <see cref="PlatformCommandLine"/> that can start the host and invoke the command.</returns>
-        public PlatformCommandLine Build()
+        /// <returns>A <see cref="NeoPlatformCommandLine"/> that can start the host and invoke the command.</returns>
+        public NeoPlatformCommandLine Build()
         {
             var parseResults = Command.Parse(args ?? [], ParserConfiguration);
 
             BuildChain().Invoke(parseResults);
 
-            var hostBuilder = _hostBuilder ?? new HostBuilder();
-            return new(parseResults, hostBuilder, InvocationConfiguration);
+            var host = (_hostBuilder ?? new HostBuilder()).Build();
+            return new(parseResults, host, InvocationConfiguration);
         }
 
-        private PlatformCommandLineNextDelegate BuildChain()
+        private NeoPlatformCommandLineNextDelegate BuildChain()
         {
-            PlatformCommandLineNextDelegate app = _ => { }; // terminal handler (no-op)
+            NeoPlatformCommandLineNextDelegate app = _ => { }; // terminal handler (no-op)
 
             // Build chain in reverse so first registered middleware runs first
             for (var i = _middleware.Count - 1; i >= 0; i--)

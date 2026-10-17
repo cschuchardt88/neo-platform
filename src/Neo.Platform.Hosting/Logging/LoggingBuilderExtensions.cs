@@ -34,12 +34,14 @@ namespace Neo.Platform.Hosting.Logging
     public static class LoggingBuilderExtensions
     {
         /// <summary>
-        /// Adds the Neo platform logger provider to the logging pipeline.
+        /// Adds Neo's platform logger named 'NeoPlatformLog' to the factory.
         /// </summary>
-        /// <param name="builder">The logging builder.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static ILoggingBuilder AddNeoPlatform(this ILoggingBuilder builder)
+        /// <param name="builder">The extension method argument.</param>
+        /// <returns>The <see cref="ILoggingBuilder"/> so that additional calls can be chained.</returns>
+        public static ILoggingBuilder AddNeoPlatformLog(this ILoggingBuilder builder)
         {
+            ArgumentNullException.ThrowIfNull(builder);
+
             builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, NeoPlatformLoggerProvider>());
 
             LoggerProviderOptions.RegisterProviderOptions<NeoPlatformLoggerOptions, NeoPlatformLoggerProvider>(builder.Services);
@@ -48,15 +50,18 @@ namespace Neo.Platform.Hosting.Logging
         }
 
         /// <summary>
-        /// Adds the Neo platform logger provider and configures its options.
+        /// Adds Neo's platform logger. Use <paramref name="configure"/> to enable logging for specific log levels.
         /// </summary>
-        /// <param name="builder">The logging builder.</param>
-        /// <param name="configure">A callback that configures <see cref="NeoPlatformLoggerOptions"/>.</param>
-        /// <returns>The same <paramref name="builder"/> for chaining.</returns>
-        public static ILoggingBuilder AddNeoPlatform(this ILoggingBuilder builder, Action<NeoPlatformLoggerOptions> configure)
+        /// <param name="builder">The extension method argument.</param>
+        /// <param name="configure">A delegate to configure the <see cref="NeoPlatformLoggerOptions"/>.</param>
+        /// <returns>The <see cref="ILoggingBuilder"/> so that additional calls can be chained.</returns>
+        public static ILoggingBuilder AddNeoPlatformLog(this ILoggingBuilder builder, Action<NeoPlatformLoggerOptions> configure)
         {
-            builder.AddNeoPlatform();
+            ArgumentNullException.ThrowIfNull(configure);
+
+            builder.AddNeoPlatformLog();
             builder.Services.Configure(configure);
+
             return builder;
         }
     }

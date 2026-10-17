@@ -20,23 +20,44 @@
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 // SERVICES
 
+using System;
 using System.CommandLine;
+using System.CommandLine.Help;
+using System.IO;
 
 namespace Neo.Platform.CLI.Commands
 {
     /// <summary>
     /// Root command for the Neo Platform CLI.
     /// </summary>
-    internal class ProgramRootCommand : RootCommand
+    internal class ProgramRootCommand : Command
     {
+        /// <summary>
+        /// The name of the currently running executable.
+        /// </summary>
+        public static string ExecutableName
+            => field ??= Path.GetFileNameWithoutExtension(ExecutablePath).Replace(" ", "");
+
+        /// <summary>
+        /// The path to the currently running executable.
+        /// </summary>
+        public static string ExecutablePath
+            => field ??= Environment.GetCommandLineArgs()[0];
+
         /// <summary>
         /// Initializes the root command and registers subcommands.
         /// </summary>
-        public ProgramRootCommand() : base("Neo Platform Command-line Tool")
+        public ProgramRootCommand() : base(ExecutableName, "Neo Platform Command-line Tool")
         {
-            var showCommand = new ShowCommand();
+            Options.Add(new HelpOption());
+            Options.Add(new VersionOption());
 
+            var showCommand = new ShowCommand();
             Add(showCommand);
+        }
+
+        public ProgramRootCommand(string description = "") : base(description)
+        {
         }
     }
 }

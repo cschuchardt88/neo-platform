@@ -21,6 +21,7 @@
 // SERVICES
 
 using Microsoft.Extensions.Logging;
+using Neo.Core;
 using System;
 using System.Diagnostics.CodeAnalysis;
 
@@ -31,6 +32,7 @@ namespace Neo.Platform.Hosting.Logging
     /// </summary>
     internal sealed class NeoPlatformLogger(
         string name,
+        NeoPlatformLifetimeOptions platformLifetimeOptions,
         Func<NeoPlatformLoggerOptions> config) : ILogger
     {
         private DateTime DateTimeNow => _getConfig().UseUtcTimestamp ? DateTime.UtcNow : DateTime.Now;
@@ -38,6 +40,7 @@ namespace Neo.Platform.Hosting.Logging
 
         private readonly string _name = name;
         private readonly Func<NeoPlatformLoggerOptions> _getConfig = config;
+        private readonly bool _suppressLoggerMessages = platformLifetimeOptions.SuppressStatusMessages;
 
         /// <inheritdoc />
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull
@@ -45,42 +48,51 @@ namespace Neo.Platform.Hosting.Logging
 
         /// <inheritdoc />
         public bool IsEnabled(LogLevel logLevel)
-            => logLevel != LogLevel.None;
+            => !_suppressLoggerMessages && logLevel != LogLevel.None;
 
         /// <inheritdoc />
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
+            if (_suppressLoggerMessages)
+                return;
+
             if (IsEnabled(logLevel) == false)
                 return;
 
             ArgumentNullException.ThrowIfNull(formatter);
 
             var message = formatter(state, exception);
+            var messageIsEmpty = string.IsNullOrEmpty(message);
 
-            if (string.IsNullOrEmpty(message) && exception == null)
+            if (messageIsEmpty && exception is null)
                 return;
-
-            message = $"{_name}[{eventId.Name ?? $"{eventId.Id:d}"}] {message}";
+            else if (messageIsEmpty == false)
+                message = $"{_name}[{eventId.Name ?? $"{eventId.Id:d}"}] {message}";
 
             switch (logLevel)
             {
                 case LogLevel.Trace:
-                    TraceMessage("{0}", message);
+                    if (messageIsEmpty == false)
+                        TraceMessage("{0}", message);
                     break;
                 case LogLevel.Debug:
-                    DebugMessage("{0}", message);
+                    if (messageIsEmpty == false)
+                        DebugMessage("{0}", message);
                     break;
                 case LogLevel.Information:
-                    InfoMessage("{0}", message);
+                    if (messageIsEmpty == false)
+                        InfoMessage("{0}", message);
                     break;
                 case LogLevel.Warning:
-                    WarningMessage("{0}", message);
+                    if (messageIsEmpty == false)
+                        WarningMessage("{0}", message);
                     break;
                 case LogLevel.Error:
                 case LogLevel.Critical:
-                    ErrorMessage("{0}", message);
+                    if (messageIsEmpty == false)
+                        ErrorMessage("{0}", message);
                     if (exception is not null)
-                        ErrorMessage(exception, ShowExceptionStackTrace);
+                        ErrorMessage(exception);
                     break;
                 default:
                     break;
@@ -91,54 +103,10 @@ namespace Neo.Platform.Hosting.Logging
         {
             var format = $"[{BuildFormatString(_getConfig().TimestampFormat)}] ";
             if (isError)
-                ErrorWrite(format, DateTimeNow);
+                ConsoleUtilities.ErrorWrite(format, DateTimeNow);
             else
-                Write(format, DateTimeNow);
+                ConsoleUtilities.Write(format, DateTimeNow);
         }
-
-        /// <summary>
-        /// Writes a formatted message to standard output without a trailing newline.
-        /// </summary>
-        public static void Write([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
-        {
-            var message = string.Format(format, args);
-
-            Console.Out.Write(message);
-        }
-
-        /// <summary>
-        /// Writes a formatted message to standard error without a trailing newline.
-        /// </summary>
-        public static void ErrorWrite([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
-        {
-            var message = string.Format(format, args);
-
-            Console.Error.Write(message);
-        }
-
-        /// <summary>
-        /// Writes a newline to standard output.
-        /// </summary>
-        public static void WriteLine()
-            => Write(Environment.NewLine);
-
-        /// <summary>
-        /// Writes a formatted message to standard output followed by a newline.
-        /// </summary>
-        public static void WriteLine([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
-            => Write(string.Format(format, args) + Environment.NewLine);
-
-        /// <summary>
-        /// Writes a newline to standard error.
-        /// </summary>
-        public static void ErrorWriteLine()
-            => ErrorWrite(Environment.NewLine);
-
-        /// <summary>
-        /// Writes a formatted message to standard error followed by a newline.
-        /// </summary>
-        public static void ErrorWriteLine([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
-            => ErrorWrite(string.Format(format, args) + Environment.NewLine);
 
         /// <summary>
         /// Writes an information-level message with platform coloring.
@@ -146,11 +114,11 @@ namespace Neo.Platform.Hosting.Logging
         public void InfoMessage([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
         {
             WriteDateTime();
-            SetTerminalForegroundColor(ConsoleColor.Blue);
-            Write($"Info: ");
-            SetTerminalForegroundColor(ConsoleColor.White);
-            WriteLine(format, args);
-            ResetColor();
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.Blue);
+            ConsoleUtilities.Write($"Info: ");
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.White);
+            ConsoleUtilities.WriteLine(format, args);
+            ConsoleUtilities.ResetTerminalColors();
         }
 
         /// <summary>
@@ -159,11 +127,11 @@ namespace Neo.Platform.Hosting.Logging
         public void WarningMessage([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
         {
             WriteDateTime();
-            SetTerminalForegroundColor(ConsoleColor.Yellow);
-            Write("Warn: ");
-            SetTerminalForegroundColor(ConsoleColor.White);
-            WriteLine(format, args);
-            ResetColor();
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.Yellow);
+            ConsoleUtilities.Write("Warn: ");
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.White);
+            ConsoleUtilities.WriteLine(format, args);
+            ConsoleUtilities.ResetTerminalColors();
         }
 
         /// <summary>
@@ -171,11 +139,11 @@ namespace Neo.Platform.Hosting.Logging
         /// </summary>
         public void DebugMessage([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
         {
-            SetTerminalForegroundColor(ConsoleColor.DarkGray);
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.DarkGray);
             WriteDateTime();
-            Write("Debug: ");
-            WriteLine(format, args);
-            ResetColor();
+            ConsoleUtilities.Write("Debug: ");
+            ConsoleUtilities.WriteLine(format, args);
+            ConsoleUtilities.ResetTerminalColors();
         }
 
         /// <summary>
@@ -183,37 +151,37 @@ namespace Neo.Platform.Hosting.Logging
         /// </summary>
         public void TraceMessage([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
         {
-            SetTerminalForegroundColor(ConsoleColor.DarkGray);
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.DarkGray);
             WriteDateTime();
-            Write("Trace: ");
-            WriteLine(format, args);
-            ResetColor();
+            ConsoleUtilities.Write("Trace: ");
+            ConsoleUtilities.WriteLine(format, args);
+            ConsoleUtilities.ResetTerminalColors();
         }
 
         /// <summary>
         /// Writes exception details to standard error, optionally including a stack trace.
         /// </summary>
         /// <param name="exception">Exception to report.</param>
-        /// <param name="showStackTrace">When <see langword="true"/>, includes stack trace output.</param>
-        public void ErrorMessage(Exception exception, bool showStackTrace = true)
+        public void ErrorMessage(Exception exception)
         {
-            var stackTrace = exception.InnerException?.StackTrace ?? exception.StackTrace;
+            exception = CoreUtilities.GetRootException(exception);
 
-            SetTerminalForegroundColor(ConsoleColor.Red);
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.Red);
             WriteDateTime(isError: true);
-            SetTerminalForegroundColor(ConsoleColor.DarkRed);
-            ErrorWriteLine("{0}: ", exception.InnerException?.GetType().Name ?? exception.GetType().Name);
-            SetTerminalForegroundColor(ConsoleColor.Red);
-            ErrorWriteLine("   {0}", exception.InnerException?.Message ?? exception.Message);
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.DarkRed);
+            ConsoleUtilities.ErrorWriteLine("{0}: ", exception.GetType().Name);
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.Red);
+            ConsoleUtilities.ErrorWriteLine("   {0}", exception.Message);
 
-            if (showStackTrace)
+            if (string.IsNullOrEmpty(exception.StackTrace) == false
+                    && ShowExceptionStackTrace)
             {
-                ErrorWriteLine("Stack Trace: ");
-                SetTerminalForegroundColor(ConsoleColor.DarkRed);
-                ErrorWriteLine("   {0}", stackTrace?.Trim() ?? string.Empty);
+                ConsoleUtilities.ErrorWriteLine("Stack Trace: ");
+                ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.DarkRed);
+                ConsoleUtilities.ErrorWriteLine("   {0}", exception.StackTrace.Trim());
             }
 
-            ResetColor();
+            ConsoleUtilities.ResetTerminalColors();
         }
 
         /// <summary>
@@ -221,37 +189,13 @@ namespace Neo.Platform.Hosting.Logging
         /// </summary>
         public void ErrorMessage([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
         {
-            SetTerminalForegroundColor(ConsoleColor.Red);
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.Red);
             WriteDateTime(isError: true);
-            SetTerminalForegroundColor(ConsoleColor.DarkRed);
-            ErrorWrite("Error: ");
-            SetTerminalForegroundColor(ConsoleColor.Red);
-            ErrorWriteLine(format, args);
-            ResetColor();
-        }
-
-        /// <summary>
-        /// Sets the console foreground color.
-        /// </summary>
-        public static void SetTerminalForegroundColor(ConsoleColor consoleColor)
-        {
-            Console.ForegroundColor = consoleColor;
-        }
-
-        /// <summary>
-        /// Sets the console background color.
-        /// </summary>
-        public static void SetTerminalBackgroundColor(ConsoleColor consoleColor)
-        {
-            Console.BackgroundColor = consoleColor;
-        }
-
-        /// <summary>
-        /// Resets console colors to the default.
-        /// </summary>
-        public static void ResetColor()
-        {
-            Console.ResetColor();
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.DarkRed);
+            ConsoleUtilities.ErrorWrite("Error: ");
+            ConsoleUtilities.SetTerminalForegroundColor(ConsoleColor.Red);
+            ConsoleUtilities.ErrorWriteLine(format, args);
+            ConsoleUtilities.ResetTerminalColors();
         }
 
         private static string BuildFormatString(string format, int index = 0)

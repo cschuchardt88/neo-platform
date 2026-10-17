@@ -24,31 +24,34 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
-using System.Runtime.Versioning;
 
 namespace Neo.Platform.Hosting.Logging
 {
     /// <summary>
     /// <see cref="ILoggerProvider"/> that creates <see cref="NeoPlatformLogger"/> instances.
     /// </summary>
-    [UnsupportedOSPlatform("browser")]
-    [ProviderAlias("NeoPlatform")]
+    [ProviderAlias("NeoPlatformLog")]
     internal sealed class NeoPlatformLoggerProvider : ILoggerProvider
     {
         private readonly IDisposable? _onChangeToken;
         private readonly ConcurrentDictionary<string, NeoPlatformLogger> _loggers = new(StringComparer.OrdinalIgnoreCase);
+
+        private readonly NeoPlatformLifetimeOptions _platformLifetimeOptions;
 
         private NeoPlatformLoggerOptions _currentConfig;
 
         /// <summary>
         /// Initializes a new provider that tracks option changes from the monitor.
         /// </summary>
-        /// <param name="config">Options monitor for logger configuration.</param>
+        /// <param name="loggerConfig">Options monitor for logger configuration.</param>
+        /// <param name="platformLifetimeOptions">Options for platform lifetime configuration.</param>
         public NeoPlatformLoggerProvider(
-            IOptionsMonitor<NeoPlatformLoggerOptions> config)
+            IOptionsMonitor<NeoPlatformLoggerOptions> loggerConfig,
+            IOptions<NeoPlatformLifetimeOptions> platformLifetimeOptions)
         {
-            _currentConfig = config.CurrentValue;
-            _onChangeToken = config.OnChange(updatedConfig => _currentConfig = updatedConfig);
+            _currentConfig = loggerConfig.CurrentValue;
+            _onChangeToken = loggerConfig.OnChange(updatedConfig => _currentConfig = updatedConfig);
+            _platformLifetimeOptions = platformLifetimeOptions.Value;
         }
 
         /// <summary>
@@ -57,11 +60,7 @@ namespace Neo.Platform.Hosting.Logging
         /// <param name="categoryName">Logger category name.</param>
         /// <returns>An <see cref="ILogger"/> for the category.</returns>
         public ILogger CreateLogger(string categoryName)
-            => _loggers.GetOrAdd(
-                categoryName,
-                name =>
-                    new(name, GetCurrentConfig)
-            );
+            => _loggers.GetOrAdd(categoryName, name => new(name, _platformLifetimeOptions, GetCurrentConfig));
 
         private NeoPlatformLoggerOptions GetCurrentConfig()
             => _currentConfig;

@@ -24,6 +24,7 @@ using Microsoft.Extensions.Hosting;
 using Neo.Platform.CLI.Commands;
 using Neo.Platform.Hosting;
 using Neo.Platform.Hosting.Builder;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Neo.Platform.CLI
@@ -32,9 +33,11 @@ namespace Neo.Platform.CLI
     {
         private static Task<int> Main(string[] args)
         {
+            using var cts = new CancellationTokenSource();
+
             var rootCommand = new ProgramRootCommand();
-            var cmd = new PlatformCommandLineBuilder(rootCommand, args)
-                .UseHost(DefaultNeoHostBuilderFactory, builder =>
+            var cmd = new NeoPlatformCommandLineBuilder(rootCommand, args)
+                .UseHost(DefaultNeoPlatformBuilderFactory, builder =>
                 {
                     //builder.UseCommandAction<ProgramRootCommand, EmptyHandler>();
                     builder.UseCommandAction<ShowCommand, ShowCommand.Handler>();
@@ -43,11 +46,10 @@ namespace Neo.Platform.CLI
                 .EnableDefaultExceptionHandler(false)
                 .Build();
 
-            return cmd.InvokeAsync();
+            return cmd.InvokeAsync(cts.Token);
         }
 
-        private static IHostBuilder DefaultNeoHostBuilderFactory(string[] args)
-            => new HostBuilder()
-            .UseNeoPlatformConfiguration();
+        private static IHostBuilder DefaultNeoPlatformBuilderFactory(string[] args)
+            => new HostBuilder().UseNeoPlatformConfiguration();
     }
 }

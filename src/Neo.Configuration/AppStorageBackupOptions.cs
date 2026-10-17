@@ -25,12 +25,12 @@ using Neo.Configuration.Json;
 namespace Neo.Configuration
 {
     /// <summary>
-    /// Configuration options for any storage backup environment.
+    /// Configuration options for platform storage backup environment.
     /// </summary>
-    public class AppStorageBackupOptions : JsonModel
+    public class PlatformStorageBackupOptions : JsonModel
     {
         /// <summary>
-        /// Gets or sets the absolute path to the directory that contains any storage backup files.
+        /// Gets or sets the absolute path to the directory that contains platform storage backup files.
         /// </summary>
         /// <remarks>
         /// Must be a valid fully qualified path to a directory.
